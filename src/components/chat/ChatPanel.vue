@@ -1,0 +1,200 @@
+<template>
+  <div class="flex flex-col h-full bg-white dark:bg-gray-800">
+    <!-- Header -->
+    <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+      <div>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Chat d'équipe</h2>
+        <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <div class="flex -space-x-2">
+            <UserAvatar
+              v-for="user in onlineUsers.slice(0, 3)"
+              :key="user.uid"
+              :email="user.email"
+              :size="24"
+            />
+          </div>
+          <span>{{ onlineUsers.length }} en ligne</span>
+        </div>
+      </div>
+      <button
+        @click="$emit('close')"
+        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition md:hidden"
+      >
+        <i class="ph ph-x text-xl"></i>
+      </button>
+    </div>
+
+    <!-- Messages -->
+    <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
+      <MessageBubble
+        v-for="message in chatStore.sortedMessages"
+        :key="message.id"
+        :message="message"
+        :is-own="message.sender === authStore.currentUser?.email"
+        @add-reaction="(emoji) => chatStore.addReaction(message.id!, emoji)"
+      />
+
+      <!-- Typing Indicator -->
+      <TypingIndicator v-if="typingUsers.length > 0" :users="typingUsers" />
+
+      <!-- Empty State -->
+      <div v-if="chatStore.sortedMessages.length === 0" class="text-center py-12">
+        <i class="ph ph-chat-circle-dots text-6xl text-gray-300 dark:text-gray-600 mb-4"></i>
+        <p class="text-gray-500 dark:text-gray-400">Aucun message pour le moment</p>
+        <p class="text-sm text-gray-400 dark:text-gray-500">Soyez le premier à écrire!</p>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+      <!-- File Preview -->
+      <div v-if="attachmentPreview" class="mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="ph ph-file text-2xl text-gray-600 dark:text-gray-400"></i>
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-white">{{ attachmentPreview.name }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatFileSize(attachmentPreview.size) }}</p>
+          </div>
+        </div>
+        <button @click="clearAttachment" class="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+
+      <form @submit.prevent="sendMessage" class="flex items-end gap-2">
+        <!-- Attach Button -->
+        <input
+          ref="fileInput"
+          type="file"
+          class="hidden"
+          @change="handleFileSelect"
+          accept="image/*,.pdf,.doc,.docx,.txt"
+        />
+        <button
+          type="button"
+          @click="fileInput?.click()"
+          class="p-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+          title="Joindre un fichier"
+        >
+          <i class="ph ph-paperclip text-xl"></i>
+        </button>
+
+        <!-- Textarea -->
+        <div class="flex-1 relative">
+          <textarea
+            v-model="messageText"
+            @input="handleTyping"
+            @keydown.enter.exact.prevent="sendMessage"
+            placeholder="Votre message..."
+            rows="1"
+            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+            style="max-height: 120px"
+          ></textarea>
+        </div>
+
+        <!-- Send Button -->
+        <button
+          type="submit"
+          :disabled="!canSend"
+          class="p-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-lg transition"
+        >
+          <i class="ph ph-paper-plane-right text-xl"></i>
+        </button>
+      </form>
+
+      <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
+        Entrée pour envoyer • Shift+Entrée pour nouvelle ligne
+      </p>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch, nextTick } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import { useChatStore } from '@/stores/chat'
+import { fileToBase64 } from '@/utils/helpers'
+import UserAvatar from '@/components/auth/UserAvatar.vue'
+import MessageBubble from './MessageBubble.vue'
+import TypingIndicator from './TypingIndicator.vue'
+
+defineEmits<{
+  close: []
+}>()
+
+const authStore = useAuthStore()
+const chatStore = useChatStore()
+
+const messageText = ref('')
+const fileInput = ref<HTMLInputElement>()
+const messagesContainer = ref<HTMLDivElement>()
+const attachmentPreview = ref<File | null>(null)
+const attachmentData = ref<string>('')
+
+const onlineUsers = computed(() => authStore.users.filter(u => u.state === 'online'))
+const typingUsers = computed(() => authStore.users.filter(u => u.isTyping && u.uid !== authStore.currentUser?.uid))
+
+const canSend = computed(() => messageText.value.trim().length > 0 || attachmentPreview.value)
+
+const handleTyping = () => {
+  chatStore.setTyping(true)
+}
+
+const handleFileSelect = async (e: Event) => {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+
+  if (file.size > 5 * 1024 * 1024) {
+    alert('Fichier trop volumineux (max 5MB)')
+    return
+  }
+
+  attachmentPreview.value = file
+  attachmentData.value = await fileToBase64(file)
+}
+
+const clearAttachment = () => {
+  attachmentPreview.value = null
+  attachmentData.value = ''
+  if (fileInput.value) fileInput.value.value = ''
+}
+
+const sendMessage = async () => {
+  if (!canSend.value) return
+
+  const attachment = attachmentPreview.value
+    ? {
+        data: attachmentData.value,
+        name: attachmentPreview.value.name,
+        type: attachmentPreview.value.type
+      }
+    : undefined
+
+  await chatStore.sendMessage(messageText.value, attachment)
+
+  messageText.value = ''
+  clearAttachment()
+  scrollToBottom()
+}
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (messagesContainer.value) {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    }
+  })
+}
+
+const formatFileSize = (bytes: number) => {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+watch(() => chatStore.sortedMessages.length, () => {
+  scrollToBottom()
+})
+
+// Mark as read when panel is visible
+chatStore.markAsRead()
+</script>
