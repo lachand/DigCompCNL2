@@ -84,7 +84,7 @@
               ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400'
               : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300'"
           >
-            {{ domain.id }}. {{ domain.name.substring(0, 20) }}...
+            {{ getDomainShortName(domain) }}
           </button>
         </div>
       </div>
@@ -214,28 +214,51 @@ const toggleDomain = (domainId: string) => {
   }
 }
 
+const getDomainShortName = (domain: any) => {
+  const match = domain.id?.match(/\/(\d+)$/)
+  if (match) {
+    return `D${match[1]}: ${domain.name?.substring(0, 15) || ''}...`
+  }
+  return domain.name?.substring(0, 20) || domain.id
+}
+
 const filteredOutcomes = computed(() => {
   return competencesStore.allOutcomes.filter(outcome => {
-    // Domain filter
-    const domainId = outcome.id.match(/LO(\d+)\./)?.[1]
-    if (domainId && !filters.domains.includes(domainId)) return false
+    // Domain filter - find which domain this outcome belongs to
+    let outcomeDomainId: string | null = null
+    for (const domain of competencesStore.digCompData.domains) {
+      for (const comp of domain.competences) {
+        if (comp.outcomes.some(o => o.id === outcome.id)) {
+          outcomeDomainId = domain.id
+          break
+        }
+      }
+      if (outcomeDomainId) break
+    }
+
+    if (outcomeDomainId && filters.domains.length > 0 && !filters.domains.includes(outcomeDomainId)) {
+      return false
+    }
+
+    // Check if outcome has mappings
+    if (!outcome.mappings) return filters.statuses.includes('none')
 
     // Check if any selected year has a matching status
     const hasMatchingStatus = filters.years.some(year => {
-      const status = outcome.mappings[year]?.status || 'none'
+      const status = outcome.mappings?.[year]?.status || 'none'
       return filters.statuses.includes(status)
     })
     if (!hasMatchingStatus) return false
 
     // Course filter
     if (filters.onlyWithCourse) {
-      const hasCourse = filters.years.some(year => outcome.mappings[year]?.courseLink)
+      const hasCourse = filters.years.some(year => outcome.mappings?.[year]?.courseLink)
       if (!hasCourse) return false
     }
 
     // Resources filter
     if (filters.onlyWithResources) {
-      const hasResources = filters.years.some(year => (outcome.mappings[year]?.resources?.length || 0) > 0)
+      const hasResources = filters.years.some(year => (outcome.mappings?.[year]?.resources?.length || 0) > 0)
       if (!hasResources) return false
     }
 

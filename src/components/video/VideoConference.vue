@@ -99,31 +99,38 @@ const stopDrag = () => {
   isDragging.value = false
 }
 
+// JaaS 8x8.vc API key
+const JAAS_APP_ID = 'vpaas-magic-cookie-6d9b644a44dd43169d30c23ee93d243e'
+
 const initJitsi = () => {
   if (!jitsiContainer.value) return
 
-  const domain = 'meet.jit.si'
+  const domain = '8x8.vc'
+  const roomName = `${JAAS_APP_ID}/${props.roomName}`
+
   const options = {
-    roomName: props.roomName,
+    roomName,
     width: containerWidth.value,
     height: containerHeight.value,
     parentNode: jitsiContainer.value,
     userInfo: {
       email: authStore.currentUser?.email,
-      displayName: authStore.currentUser?.email?.split('@')[0]
+      displayName: authStore.currentUser?.email?.split('@')[0] || 'Utilisateur'
     },
     configOverwrite: {
       startWithAudioMuted: true,
       startWithVideoMuted: true,
-      prejoinPageEnabled: false
+      prejoinPageEnabled: false,
+      disableDeepLinking: true
     },
     interfaceConfigOverwrite: {
       SHOW_JITSI_WATERMARK: false,
       SHOW_WATERMARK_FOR_GUESTS: false,
+      SHOW_BRAND_WATERMARK: false,
       TOOLBAR_BUTTONS: [
         'microphone', 'camera', 'closedcaptions', 'desktop',
         'fullscreen', 'hangup', 'chat', 'raisehand',
-        'tileview'
+        'tileview', 'participants-pane'
       ]
     }
   }
@@ -155,9 +162,9 @@ onMounted(() => {
   document.addEventListener('mousemove', onDrag)
   document.addEventListener('mouseup', stopDrag)
 
-  // Load Jitsi script
+  // Load JaaS 8x8.vc script
   const script = document.createElement('script')
-  script.src = 'https://meet.jit.si/external_api.js'
+  script.src = `https://8x8.vc/${JAAS_APP_ID}/external_api.js`
   document.head.appendChild(script)
 })
 

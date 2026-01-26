@@ -114,13 +114,28 @@
                     <p class="text-xs text-gray-600 dark:text-gray-400 truncate max-w-md">{{ outcome.description }}</p>
                   </td>
                   <td class="py-2 px-4 text-center">
-                    <div class="inline-block w-8 h-8 rounded" :class="getStatusColor(outcome.mappings.L1.status)" :title="outcome.mappings.L1.status"></div>
+                    <button
+                      @click="cycleStatus(outcome.id, 'L1')"
+                      class="inline-block w-8 h-8 rounded cursor-pointer hover:ring-2 hover:ring-indigo-400 transition-all"
+                      :class="getStatusColor(outcome.mappings.L1.status)"
+                      :title="`${outcome.mappings.L1.status} - Cliquez pour changer`"
+                    ></button>
                   </td>
                   <td class="py-2 px-4 text-center">
-                    <div class="inline-block w-8 h-8 rounded" :class="getStatusColor(outcome.mappings.L2.status)" :title="outcome.mappings.L2.status"></div>
+                    <button
+                      @click="cycleStatus(outcome.id, 'L2')"
+                      class="inline-block w-8 h-8 rounded cursor-pointer hover:ring-2 hover:ring-indigo-400 transition-all"
+                      :class="getStatusColor(outcome.mappings.L2.status)"
+                      :title="`${outcome.mappings.L2.status} - Cliquez pour changer`"
+                    ></button>
                   </td>
                   <td class="py-2 px-4 text-center">
-                    <div class="inline-block w-8 h-8 rounded" :class="getStatusColor(outcome.mappings.L3.status)" :title="outcome.mappings.L3.status"></div>
+                    <button
+                      @click="cycleStatus(outcome.id, 'L3')"
+                      class="inline-block w-8 h-8 rounded cursor-pointer hover:ring-2 hover:ring-indigo-400 transition-all"
+                      :class="getStatusColor(outcome.mappings.L3.status)"
+                      :title="`${outcome.mappings.L3.status} - Cliquez pour changer`"
+                    ></button>
                   </td>
                 </tr>
               </template>
@@ -164,6 +179,21 @@ import { useCompetencesStore } from '@/stores/competences'
 import type { YearLevel, StatusType, LevelType } from '@/types'
 
 const competencesStore = useCompetencesStore()
+
+// Status cycle order
+const STATUS_CYCLE: StatusType[] = ['none', 'draft', 'review', 'validated', 'obsolete']
+
+const cycleStatus = async (outcomeId: string, year: YearLevel) => {
+  const outcome = competencesStore.allOutcomes.find(o => o.id === outcomeId)
+  if (!outcome) return
+
+  const currentStatus = outcome.mappings[year].status
+  const currentIndex = STATUS_CYCLE.indexOf(currentStatus)
+  const nextIndex = (currentIndex + 1) % STATUS_CYCLE.length
+  const nextStatus = STATUS_CYCLE[nextIndex]
+
+  await competencesStore.updateMappingField(outcomeId, year, 'status', nextStatus)
+}
 
 const getYearCoverage = (year: YearLevel) => {
   const allOutcomes = competencesStore.allOutcomes

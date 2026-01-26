@@ -5,7 +5,7 @@
       <!-- Activity History -->
       <button
         @click="$emit('toggle-history')"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
         title="Historique d'activité"
       >
         <i class="ph ph-clock-counter-clockwise text-xl"></i>
@@ -32,7 +32,7 @@
       <!-- Magic Import -->
       <button
         @click="$emit('toggle-magic-import')"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
         title="Import magique"
       >
         <i class="ph ph-magic-wand text-xl"></i>
@@ -41,7 +41,7 @@
       <!-- Export -->
       <button
         @click="$emit('toggle-export')"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
         title="Exporter"
       >
         <i class="ph ph-export text-xl"></i>
@@ -50,7 +50,7 @@
       <!-- Referential Panel -->
       <button
         @click="$emit('toggle-referential')"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
         title="Référentiel DigComp"
       >
         <i class="ph ph-tree-structure text-xl"></i>
@@ -59,7 +59,7 @@
       <!-- Dark Mode Toggle -->
       <button
         @click="darkMode.toggle()"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
         :title="darkMode.isDark.value ? 'Mode clair' : 'Mode sombre'"
       >
         <i class="ph text-xl" :class="darkMode.isDark.value ? 'ph-sun' : 'ph-moon'"></i>
@@ -68,7 +68,7 @@
       <!-- Video Conference -->
       <button
         @click="$emit('toggle-video')"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
         title="Visioconférence"
       >
         <i class="ph ph-video-camera text-xl"></i>
@@ -77,7 +77,7 @@
       <!-- Chat Toggle -->
       <button
         @click="$emit('toggle-chat')"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition relative"
+        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition relative text-gray-600 dark:text-gray-300"
         title="Chat d'équipe"
       >
         <i class="ph ph-chat-circle-dots text-xl"></i>
@@ -90,7 +90,7 @@
       <div class="relative">
         <button
           @click="showNotifications = !showNotifications"
-          class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition relative"
+          class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition relative text-gray-600 dark:text-gray-300"
         >
           <i class="ph ph-bell text-xl"></i>
           <span v-if="unreadNotifications > 0" class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
@@ -127,7 +127,7 @@
       <div class="relative">
         <button
           @click="showSettings = !showSettings"
-          class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+          class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
         >
           <i class="ph ph-gear text-xl"></i>
         </button>
@@ -235,8 +235,14 @@
         </div>
       </div>
 
-      <!-- User Avatar -->
-      <UserAvatar :email="authStore.userData?.email || ''" :size="40" />
+      <!-- User Avatar (click to open settings) -->
+      <button
+        @click="showSettings = !showSettings"
+        class="rounded-full hover:ring-2 hover:ring-indigo-400 transition"
+        title="Paramètres"
+      >
+        <UserAvatar :email="authStore.userData?.email || ''" :size="40" />
+      </button>
     </div>
   </header>
 </template>

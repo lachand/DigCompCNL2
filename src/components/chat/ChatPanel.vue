@@ -29,6 +29,7 @@
       <MessageBubble
         v-for="message in chatStore.sortedMessages"
         :key="message.id"
+        :data-message-id="message.id"
         :message="message"
         :is-own="message.sender === authStore.currentUser?.email"
         @add-reaction="(emoji) => chatStore.addReaction(message.id!, emoji)"
@@ -110,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { fileToBase64 } from '@/utils/helpers'
@@ -191,10 +192,38 @@ const formatFileSize = (bytes: number) => {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
-watch(() => chatStore.sortedMessages.length, () => {
-  scrollToBottom()
+// Scroll to first unread message on open, or bottom if no unread
+const scrollToFirstUnread = () => {
+  nextTick(() => {
+    if (!messagesContainer.value) return
+
+    // Find first unread message
+    const messageElements = messagesContainer.value.querySelectorAll('[data-message-id]')
+    const firstUnreadIndex = chatStore.sortedMessages.findIndex(
+      m => m.timestamp > chatStore.lastReadTimestamp
+    )
+
+    if (firstUnreadIndex > 0 && messageElements[firstUnreadIndex]) {
+      messageElements[firstUnreadIndex].scrollIntoView({ behavior: 'smooth', block: 'start' })
+    } else {
+      scrollToBottom()
+    }
+  })
+}
+
+watch(() => chatStore.sortedMessages.length, (newLen, oldLen) => {
+  // Only scroll to bottom for new messages, not initial load
+  if (oldLen > 0) {
+    scrollToBottom()
+  }
 })
 
-// Mark as read when panel is visible
-chatStore.markAsRead()
+onMounted(() => {
+  chatStore.setChatOpen(true)
+  scrollToFirstUnread()
+})
+
+onUnmounted(() => {
+  chatStore.setChatOpen(false)
+})
 </script>

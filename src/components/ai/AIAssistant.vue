@@ -143,7 +143,7 @@
             <div v-html="renderedMarkdown"></div>
           </div>
 
-          <div class="flex gap-2">
+          <div class="flex gap-2 flex-wrap">
             <button
               @click="copyToClipboard"
               class="flex-1 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition flex items-center justify-center gap-2"
@@ -158,6 +158,15 @@
               <i class="ph ph-download-simple"></i>
               <span>Télécharger</span>
             </button>
+            <!-- GIFT Export for QCM -->
+            <button
+              v-if="selectedType === 'qcm'"
+              @click="showGiftExport = true"
+              class="flex-1 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition flex items-center justify-center gap-2"
+            >
+              <i class="ph ph-graduation-cap"></i>
+              <span>Moodle (GIFT)</span>
+            </button>
             <button
               @click="reset"
               class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition flex items-center justify-center gap-2"
@@ -166,6 +175,14 @@
               <span>Régénérer</span>
             </button>
           </div>
+
+          <!-- GIFT Export Modal -->
+          <GiftExportModal
+            v-if="selectedType === 'qcm'"
+            v-model="showGiftExport"
+            :content="geminiResult"
+            :outcome-id="outcome.id"
+          />
         </div>
       </div>
     </div>
@@ -181,6 +198,7 @@ import { useMarkdown } from '@/composables/useMarkdown'
 import { useToast } from '@/composables/useToast'
 import { copyToClipboard as copyText, downloadFile, formatDate } from '@/utils/helpers'
 import Modal from '@/components/common/Modal.vue'
+import GiftExportModal from '@/components/ai/GiftExportModal.vue'
 import { AI_MODELS } from '@/types'
 import type { LearningOutcome, AIGenerationType, AIHistoryEntry } from '@/types'
 
@@ -217,6 +235,7 @@ const isOpen = computed({
 const selectedType = ref<AIGenerationType | null>(null)
 const selectedModel = ref(authStore.userData?.aiModel || 'gemini-3-flash-preview')
 const useStreaming = ref(true)
+const showGiftExport = ref(false)
 
 // Watch for model preference changes
 watch(() => authStore.userData?.aiModel, (newModel) => {
@@ -230,6 +249,7 @@ watch(() => props.modelValue, (newValue) => {
     geminiResult.value = ''
     geminiError.value = ''
     streamingText.value = ''
+    showGiftExport.value = false
   }
 })
 

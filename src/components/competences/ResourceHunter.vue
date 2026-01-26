@@ -7,17 +7,19 @@
     variant="primary"
   >
     <div class="space-y-6">
-      <!-- Info -->
-      <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-        <p class="text-sm text-blue-800 dark:text-blue-300">
-          <i class="ph ph-magic-wand mr-2"></i>
-          L'IA va chercher des ressources pédagogiques pertinentes pour vous
-        </p>
+      <!-- LO Info -->
+      <div class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+        <div class="flex items-start gap-3">
+          <span class="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-mono font-bold rounded">
+            {{ outcome.id }}
+          </span>
+          <p class="text-sm text-gray-700 dark:text-gray-300 flex-1">{{ outcome.description }}</p>
+        </div>
       </div>
 
       <!-- Year Selection -->
       <div class="flex items-center gap-3">
-        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Année :</label>
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Ajouter pour :</label>
         <div class="flex gap-2">
           <button
             v-for="year in (['L1', 'L2', 'L3'] as YearLevel[])"
@@ -33,171 +35,203 @@
         </div>
       </div>
 
-      <!-- Step 1: Generate Search Terms -->
-      <div v-if="step === 1">
-        <button
-          v-if="!geminiError"
-          @click="handleGenerateSearchTerms"
-          :disabled="geminiLoading"
-          class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-lg transition flex items-center justify-center gap-2"
-        >
-          <i v-if="!geminiLoading" class="ph ph-sparkle"></i>
-          <i v-else class="ph ph-spinner animate-spin"></i>
-          <span>{{ geminiLoading ? 'Génération...' : 'Générer les termes de recherche' }}</span>
-        </button>
+      <!-- Quick Search Links (always visible) -->
+      <div class="space-y-3">
+        <h4 class="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <i class="ph ph-link text-indigo-500"></i>
+          Recherche rapide
+        </h4>
+        <div class="grid grid-cols-3 gap-3">
+          <a
+            :href="youtubeSearchUrl"
+            target="_blank"
+            class="flex items-center justify-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg transition"
+          >
+            <i class="ph ph-youtube-logo text-xl"></i>
+            <span class="text-sm font-medium">YouTube</span>
+          </a>
+          <a
+            :href="googleSearchUrl"
+            target="_blank"
+            class="flex items-center justify-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg transition"
+          >
+            <i class="ph ph-google-logo text-xl"></i>
+            <span class="text-sm font-medium">Google</span>
+          </a>
+          <a
+            :href="scholarSearchUrl"
+            target="_blank"
+            class="flex items-center justify-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg transition"
+          >
+            <i class="ph ph-graduation-cap text-xl"></i>
+            <span class="text-sm font-medium">Scholar</span>
+          </a>
+        </div>
+      </div>
 
-        <!-- Error Display -->
-        <div v-if="geminiError" class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <div class="flex items-start gap-3">
-            <i class="ph ph-warning-circle text-2xl text-red-500 dark:text-red-400 flex-shrink-0"></i>
-            <div class="flex-1">
-              <h4 class="font-semibold text-red-800 dark:text-red-300 mb-1">Erreur de génération</h4>
+      <!-- Manual Resource Add -->
+      <div class="space-y-3">
+        <h4 class="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <i class="ph ph-plus-circle text-green-500"></i>
+          Ajouter une ressource manuellement
+        </h4>
+        <div class="flex gap-2">
+          <input
+            v-model="manualUrl"
+            type="url"
+            placeholder="https://..."
+            class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+          />
+          <input
+            v-model="manualTitle"
+            type="text"
+            placeholder="Titre (optionnel)"
+            class="w-48 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+          />
+          <button
+            @click="addManualResource"
+            :disabled="!manualUrl"
+            class="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition"
+          >
+            <i class="ph ph-plus"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+        <!-- AI-powered search (if API key available) -->
+        <div v-if="hasApiKey">
+          <h4 class="font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
+            <i class="ph ph-sparkle text-yellow-500"></i>
+            Suggestions IA
+          </h4>
+
+          <!-- Step 1: Generate Search Terms -->
+          <div v-if="step === 1">
+            <button
+              v-if="!geminiError"
+              @click="handleGenerateSearchTerms"
+              :disabled="geminiLoading"
+              class="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-lg transition flex items-center justify-center gap-2"
+            >
+              <i v-if="!geminiLoading" class="ph ph-magic-wand"></i>
+              <i v-else class="ph ph-spinner animate-spin"></i>
+              <span>{{ geminiLoading ? 'Génération...' : 'Générer des suggestions' }}</span>
+            </button>
+
+            <div v-if="geminiError" class="mt-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
               <p class="text-sm text-red-700 dark:text-red-400">{{ geminiError }}</p>
-            </div>
-          </div>
-          <button
-            @click="clearError"
-            class="mt-3 w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition flex items-center justify-center gap-2"
-          >
-            <i class="ph ph-arrow-clockwise"></i>
-            <span>Réessayer</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Step 2: Show Search Terms -->
-      <div v-if="step === 2 && searchTerms">
-        <div class="space-y-4">
-          <div>
-            <h4 class="font-semibold text-gray-900 dark:text-white mb-2">
-              <i class="ph ph-youtube-logo text-red-500 mr-2"></i>
-              YouTube
-            </h4>
-            <div class="flex flex-wrap gap-2">
-              <span
-                v-for="term in searchTerms.youtube"
-                :key="term"
-                class="px-3 py-1 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-full text-sm"
-              >
-                {{ term }}
-              </span>
+              <button @click="clearError" class="mt-2 text-sm text-red-600 hover:underline">
+                Réessayer
+              </button>
             </div>
           </div>
 
-          <div>
-            <h4 class="font-semibold text-gray-900 dark:text-white mb-2">
-              <i class="ph ph-google-logo text-blue-500 mr-2"></i>
-              Google
-            </h4>
-            <div class="flex flex-wrap gap-2">
-              <span
-                v-for="term in searchTerms.google"
-                :key="term"
-                class="px-3 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-full text-sm"
-              >
-                {{ term }}
-              </span>
-            </div>
-          </div>
+          <!-- Step 2: Show AI Suggestions -->
+          <div v-if="step === 2 && searchTerms" class="space-y-4">
+            <button
+              @click="restart"
+              class="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+            >
+              <i class="ph ph-arrow-left mr-1"></i>
+              Retour
+            </button>
 
-          <div>
-            <h4 class="font-semibold text-gray-900 dark:text-white mb-2">
-              <i class="ph ph-article text-gray-500 mr-2"></i>
-              Wikipedia
-            </h4>
-            <div class="flex flex-wrap gap-2">
-              <span
-                v-for="term in searchTerms.wikipedia"
-                :key="term"
-                class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-sm"
-              >
-                {{ term }}
-              </span>
-            </div>
-          </div>
-
-          <button
-            @click="searchResources"
-            class="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition flex items-center justify-center gap-2"
-          >
-            <i class="ph ph-magnifying-glass"></i>
-            <span>Lancer la recherche</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Step 3: Show Results -->
-      <div v-if="step === 3">
-        <!-- Restart Button -->
-        <div class="mb-4">
-          <button
-            @click="restart"
-            class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition"
-          >
-            <i class="ph ph-arrow-clockwise"></i>
-            <span>Nouvelle recherche</span>
-          </button>
-        </div>
-
-        <div class="space-y-4 max-h-96 overflow-y-auto">
-          <!-- Videos -->
-          <div v-if="results.videos && results.videos.length > 0">
-            <h4 class="font-semibold text-gray-900 dark:text-white mb-2">
-              <i class="ph ph-video-camera text-red-500 mr-2"></i>
-              Vidéos ({{ results.videos.length }})
-            </h4>
-            <div class="space-y-2">
-              <div
-                v-for="(video, index) in results.videos"
-                :key="index"
-                class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg flex items-start justify-between gap-3"
-              >
-                <div class="flex-1">
-                  <a :href="video.url" target="_blank" class="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
-                    {{ video.title }}
-                  </a>
-                </div>
-                <button
-                  @click="addResource(video, 'video')"
-                  class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded transition"
+            <!-- YouTube suggestions -->
+            <div>
+              <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <i class="ph ph-youtube-logo text-red-500 mr-1"></i>
+                Vidéos suggérées
+              </h5>
+              <div class="space-y-2">
+                <div
+                  v-for="term in searchTerms.youtube"
+                  :key="term"
+                  class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded"
                 >
-                  <i class="ph ph-plus"></i>
-                </button>
+                  <a
+                    :href="`https://youtube.com/results?search_query=${encodeURIComponent(term)}`"
+                    target="_blank"
+                    class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex-1"
+                  >
+                    {{ term }}
+                  </a>
+                  <button
+                    @click="addSuggestedResource(term, 'youtube')"
+                    class="ml-2 px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded"
+                  >
+                    <i class="ph ph-plus"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Google suggestions -->
+            <div>
+              <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <i class="ph ph-google-logo text-blue-500 mr-1"></i>
+                Documents suggérés
+              </h5>
+              <div class="space-y-2">
+                <div
+                  v-for="term in searchTerms.google"
+                  :key="term"
+                  class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded"
+                >
+                  <a
+                    :href="`https://google.com/search?q=${encodeURIComponent(term)}`"
+                    target="_blank"
+                    class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex-1"
+                  >
+                    {{ term }}
+                  </a>
+                  <button
+                    @click="addSuggestedResource(term, 'google')"
+                    class="ml-2 px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded"
+                  >
+                    <i class="ph ph-plus"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Wikipedia suggestions -->
+            <div v-if="searchTerms.wikipedia?.length">
+              <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <i class="ph ph-article text-gray-500 mr-1"></i>
+                Articles Wikipedia
+              </h5>
+              <div class="space-y-2">
+                <div
+                  v-for="term in searchTerms.wikipedia"
+                  :key="term"
+                  class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded"
+                >
+                  <a
+                    :href="`https://fr.wikipedia.org/wiki/${encodeURIComponent(term.replace(/ /g, '_'))}`"
+                    target="_blank"
+                    class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex-1"
+                  >
+                    {{ term }}
+                  </a>
+                  <button
+                    @click="addSuggestedResource(term, 'wikipedia')"
+                    class="ml-2 px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded"
+                  >
+                    <i class="ph ph-plus"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Documents -->
-          <div v-if="results.docs && results.docs.length > 0">
-            <h4 class="font-semibold text-gray-900 dark:text-white mb-2">
-              <i class="ph ph-file-text text-blue-500 mr-2"></i>
-              Documents ({{ results.docs.length }})
-            </h4>
-            <div class="space-y-2">
-              <div
-                v-for="(doc, index) in results.docs"
-                :key="index"
-                class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg flex items-start justify-between gap-3"
-              >
-                <div class="flex-1">
-                  <a :href="doc.url" target="_blank" class="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
-                    {{ doc.title }}
-                  </a>
-                </div>
-                <button
-                  @click="addResource(doc, 'document')"
-                  class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded transition"
-                >
-                  <i class="ph ph-plus"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div v-if="(!results.videos || results.videos.length === 0) && (!results.docs || results.docs.length === 0)" class="text-center py-8 text-gray-500 dark:text-gray-400">
-            <i class="ph ph-magnifying-glass-minus text-4xl mb-2"></i>
-            <p>Aucune ressource trouvée</p>
-          </div>
+        <!-- No API key message -->
+        <div v-else class="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+          <p class="text-sm text-yellow-800 dark:text-yellow-300">
+            <i class="ph ph-info mr-2"></i>
+            Configurez une clé API Gemini dans vos paramètres utilisateur pour des suggestions personnalisées par l'IA.
+          </p>
         </div>
       </div>
     </div>
@@ -211,7 +245,7 @@ import { useCompetencesStore } from '@/stores/competences'
 import { useGemini } from '@/composables/useGemini'
 import { useToast } from '@/composables/useToast'
 import Modal from '@/components/common/Modal.vue'
-import type { YearLevel, HunterSearchTerms, HunterResult, ResourceType } from '@/types'
+import type { YearLevel, HunterSearchTerms, ResourceType } from '@/types'
 
 interface Props {
   outcome: any
@@ -237,14 +271,41 @@ const isOpen = computed({
 const step = ref(1)
 const selectedYear = ref<YearLevel>('L1')
 const searchTerms = ref<HunterSearchTerms | null>(null)
-const results = ref<HunterResult>({})
+const manualUrl = ref('')
+const manualTitle = ref('')
+
+// Check if API key is available
+const hasApiKey = computed(() => !!authStore.userData?.apiKey)
+
+// Generate search query from outcome
+const searchQuery = computed(() => {
+  if (!props.outcome) return ''
+  // Extract key terms from description
+  const desc = props.outcome.description || ''
+  // Remove common words and create a search query
+  return desc.substring(0, 100)
+})
+
+// Search URLs
+const youtubeSearchUrl = computed(() =>
+  `https://youtube.com/results?search_query=${encodeURIComponent(searchQuery.value + ' tutoriel')}`
+)
+
+const googleSearchUrl = computed(() =>
+  `https://google.com/search?q=${encodeURIComponent(searchQuery.value + ' cours PDF')}`
+)
+
+const scholarSearchUrl = computed(() =>
+  `https://scholar.google.com/scholar?q=${encodeURIComponent(searchQuery.value)}`
+)
 
 // Reset state when modal closes
 watch(() => props.modelValue, (newValue) => {
   if (!newValue) {
     step.value = 1
     searchTerms.value = null
-    results.value = {}
+    manualUrl.value = ''
+    manualTitle.value = ''
     geminiError.value = ''
   }
 })
@@ -264,34 +325,60 @@ const handleGenerateSearchTerms = async () => {
   }
 }
 
-const searchResources = () => {
-  // Simulate search results (in real app, would call APIs)
-  results.value = {
-    videos: searchTerms.value?.youtube.map((term) => ({
-      title: `Vidéo tutoriel : ${term}`,
-      url: `https://youtube.com/search?q=${encodeURIComponent(term)}`
-    })) || [],
-    docs: searchTerms.value?.google.map((term) => ({
-      title: `Guide : ${term}`,
-      url: `https://google.com/search?q=${encodeURIComponent(term)}`
-    })) || []
-  }
-  step.value = 3
-}
+const addManualResource = async () => {
+  if (!manualUrl.value) return
 
-const addResource = async (resource: { title: string; url: string }, type: ResourceType) => {
+  const title = manualTitle.value || new URL(manualUrl.value).hostname
+  const type: ResourceType = manualUrl.value.includes('youtube') || manualUrl.value.includes('youtu.be')
+    ? 'video'
+    : 'document'
+
   await competencesStore.addResource(props.outcome.id, selectedYear.value, {
-    title: resource.title,
-    url: resource.url,
+    title,
+    url: manualUrl.value,
     type
   })
+
+  success(`Ressource ajoutée pour ${selectedYear.value}`)
+  manualUrl.value = ''
+  manualTitle.value = ''
+}
+
+const addSuggestedResource = async (term: string, source: 'youtube' | 'google' | 'wikipedia') => {
+  let url: string
+  let type: ResourceType
+  let title: string
+
+  switch (source) {
+    case 'youtube':
+      url = `https://youtube.com/results?search_query=${encodeURIComponent(term)}`
+      type = 'video'
+      title = `Vidéo: ${term}`
+      break
+    case 'google':
+      url = `https://google.com/search?q=${encodeURIComponent(term)}`
+      type = 'document'
+      title = `Document: ${term}`
+      break
+    case 'wikipedia':
+      url = `https://fr.wikipedia.org/wiki/${encodeURIComponent(term.replace(/ /g, '_'))}`
+      type = 'document'
+      title = `Wikipedia: ${term}`
+      break
+  }
+
+  await competencesStore.addResource(props.outcome.id, selectedYear.value, {
+    title,
+    url,
+    type
+  })
+
   success(`Ressource ajoutée pour ${selectedYear.value}`)
 }
 
 const restart = () => {
   step.value = 1
   searchTerms.value = null
-  results.value = {}
   geminiError.value = ''
 }
 

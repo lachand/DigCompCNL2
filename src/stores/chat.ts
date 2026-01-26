@@ -23,6 +23,7 @@ export const useChatStore = defineStore('chat', () => {
   const isTyping = ref(false)
   const unreadCount = ref(0)
   const lastReadTime = ref(Date.now())
+  const isChatOpen = ref(false) // Track if chat panel is open
 
   let messagesUnsubscribe: Unsubscribe | null = null
   let typingTimeout: number | null = null
@@ -46,13 +47,13 @@ export const useChatStore = defineStore('chat', () => {
       // Calculate unread
       unreadCount.value = messages.value.filter(m => m.timestamp > lastReadTime.value).length
 
-      // Notify on new message (if not from current user and tab not focused)
+      // Notify on new message (if not from current user and chat is closed or tab not focused)
       if (messages.value.length > previousLength) {
         const latestMsg = messages.value[messages.value.length - 1]
-        if (
-          latestMsg.sender !== authStore.currentUser?.email &&
-          document.hidden
-        ) {
+        const shouldNotify = latestMsg.sender !== authStore.currentUser?.email &&
+          (document.hidden || !isChatOpen.value)
+
+        if (shouldNotify) {
           const sound = authStore.userData?.prefSound || 'beep'
           playSound(sound)
 
@@ -154,6 +155,13 @@ export const useChatStore = defineStore('chat', () => {
     unreadCount.value = 0
   }
 
+  const setChatOpen = (open: boolean) => {
+    isChatOpen.value = open
+    if (open) {
+      markAsRead()
+    }
+  }
+
   const cleanupOldMessages = async () => {
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
     const q = query(
@@ -182,11 +190,14 @@ export const useChatStore = defineStore('chat', () => {
     sortedMessages,
     isTyping,
     unreadCount,
+    isChatOpen,
+    lastReadTimestamp: computed(() => lastReadTime.value),
     loadMessages,
     sendMessage,
     setTyping,
     addReaction,
     markAsRead,
+    setChatOpen,
     cleanup
   }
 })
