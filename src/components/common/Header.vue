@@ -123,13 +123,14 @@
         </div>
       </div>
 
-      <!-- Settings -->
+      <!-- User Avatar (click to open settings) -->
       <div class="relative">
         <button
           @click="showSettings = !showSettings"
-          class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
+          class="rounded-full hover:ring-2 hover:ring-indigo-400 transition"
+          title="Paramètres"
         >
-          <i class="ph ph-gear text-xl"></i>
+          <UserAvatar :email="authStore.userData?.email || ''" :size="40" />
         </button>
 
         <!-- Settings Dropdown -->
@@ -234,15 +235,6 @@
           </div>
         </div>
       </div>
-
-      <!-- User Avatar (click to open settings) -->
-      <button
-        @click="showSettings = !showSettings"
-        class="rounded-full hover:ring-2 hover:ring-indigo-400 transition"
-        title="Paramètres"
-      >
-        <UserAvatar :email="authStore.userData?.email || ''" :size="40" />
-      </button>
     </div>
   </header>
 </template>

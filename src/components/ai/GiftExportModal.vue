@@ -166,14 +166,11 @@ function parseQCMContent() {
 
   if (!content) return
 
-  // Split by question markers (### Question X or numbered questions)
-  const questionPattern = /(?:###\s*Question\s*\d+|(?:^|\n)\d+[.)]\s*[^\n]+)/gi
-  const parts = content.split(questionPattern)
-  const matches = content.match(questionPattern) || []
+  // Split content by "### Question X" headers
+  const questionBlocks = content.split(/###\s*Question\s*\d+\s*/i).filter(block => block.trim())
 
-  matches.forEach((match, index) => {
-    const questionContent = parts[index + 1] || ''
-    const question = parseQuestion(match, questionContent)
+  questionBlocks.forEach((block) => {
+    const question = parseQuestionBlock(block)
     if (question) {
       parsedQuestions.value.push(question)
       selectedQuestions.value.push(parsedQuestions.value.length - 1)
@@ -181,48 +178,79 @@ function parseQCMContent() {
   })
 }
 
-function parseQuestion(header: string, content: string): ParsedQuestion | null {
-  // Clean up header to get question text
-  let questionText = header.replace(/###\s*Question\s*\d+\s*/i, '').replace(/^\d+[.)]\s*/, '').trim()
+function parseQuestionBlock(block: string): ParsedQuestion | null {
+  const lines = block.split('\n').map(l => l.trim()).filter(l => l)
+  if (lines.length === 0) return null
 
-  // If header doesn't contain the full question, look in content
-  if (questionText.length < 10) {
-    const firstLine = content.split('\n')[0]?.trim() || ''
-    if (firstLine && !firstLine.match(/^[a-d]\)/i)) {
-      questionText = firstLine
+  // Find question text (lines before the first choice a))
+  const questionLines: string[] = []
+  let choiceStartIndex = 0
+
+  for (let i = 0; i < lines.length; i++) {
+    if (/^[a-d]\)\s*/i.test(lines[i])) {
+      choiceStartIndex = i
+      break
+    }
+    // Skip "Réponse correcte" and "Explication" lines
+    if (!/\*\*(Réponse|Explication)/i.test(lines[i])) {
+      questionLines.push(lines[i])
     }
   }
 
-  // Parse choices (a), b), c), d) or **a)**, etc.)
-  const choicePattern = /(?:\*\*)?([a-d])\)(?:\*\*)?\s*([^\n]+)/gi
-  const choices: QuestionChoice[] = []
-  let match: RegExpExecArray | null
+  const questionText = questionLines.join(' ').trim()
+  if (!questionText) return null
 
-  while ((match = choicePattern.exec(content)) !== null) {
-    choices.push({
-      text: match[2].trim().replace(/\*\*/g, ''),
-      isCorrect: false
+  // Parse choices (a), b), c), d))
+  const choices: QuestionChoice[] = []
+  const choicePattern = /^([a-d])\)\s*(.+)/i
+
+  for (let i = choiceStartIndex; i < lines.length; i++) {
+    const line = lines[i]
+    const match = line.match(choicePattern)
+    if (match) {
+      choices.push({
+        text: match[2].replace(/\*\*/g, '').trim(),
+        isCorrect: false
+      })
+    }
+  }
+
+  // Find correct answer - try multiple patterns
+  const patterns = [
+    /\*\*Réponse\s*correcte\s*:\*\*\s*([a-d])/i,
+    /Réponse\s*correcte\s*:\s*\*\*([a-d])\*\*/i,
+    /Réponse\s*correcte\s*:\s*([a-d])/i,
+    /\*\*Réponse\s*:\*\*\s*([a-d])/i,
+    /Bonne\s*réponse\s*:\s*([a-d])/i
+  ]
+
+  for (const pattern of patterns) {
+    const match = block.match(pattern)
+    if (match && choices.length > 0) {
+      const correctIndex = match[1].toLowerCase().charCodeAt(0) - 97
+      if (correctIndex >= 0 && correctIndex < choices.length) {
+        choices[correctIndex].isCorrect = true
+        break
+      }
+    }
+  }
+
+  // If no correct answer found via pattern, check if any choice has markers
+  if (!choices.some(c => c.isCorrect)) {
+    choices.forEach(c => {
+      if (c.text.includes('✓') || c.text.includes('(correct)')) {
+        c.isCorrect = true
+        c.text = c.text.replace(/✓|\(correct\)/gi, '').trim()
+      }
     })
   }
 
-  // Find correct answer
-  const correctPattern = /\*\*(?:Réponse\s*correcte|Correct[e]?|Bonne\s*réponse)\s*:\*\*\s*([a-d])/i
-  const correctMatch = content.match(correctPattern)
-  if (correctMatch && choices.length > 0) {
-    const correctIndex = correctMatch[1].toLowerCase().charCodeAt(0) - 97
-    if (correctIndex >= 0 && correctIndex < choices.length) {
-      choices[correctIndex].isCorrect = true
-    }
-  }
-
   // Parse explanation if exists
-  const explanationPattern = /\*\*Explication\s*:\*\*\s*([^\n]+)/i
-  const explanationMatch = content.match(explanationPattern)
+  const explanationPattern = /\*\*Explication\s*:\*\*\s*(.+)/i
+  const explanationMatch = block.match(explanationPattern)
   const explanation = explanationMatch ? explanationMatch[1].trim() : undefined
 
-  if (!questionText || choices.length < 2) {
-    return null
-  }
+  if (choices.length < 2) return null
 
   return {
     text: questionText,

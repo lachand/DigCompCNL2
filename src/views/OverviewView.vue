@@ -192,7 +192,7 @@ const cycleStatus = async (outcomeId: string, year: YearLevel) => {
   const nextIndex = (currentIndex + 1) % STATUS_CYCLE.length
   const nextStatus = STATUS_CYCLE[nextIndex]
 
-  await competencesStore.updateMappingField(outcomeId, year, 'status', nextStatus)
+  await competencesStore.updateStatus(outcomeId, year, nextStatus)
 }
 
 const getYearCoverage = (year: YearLevel) => {
