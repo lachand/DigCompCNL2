@@ -12,7 +12,7 @@
       class="flex-1 flex flex-col overflow-hidden transition-all duration-300"
       :style="{
         marginLeft: sidebarIsOpen ? '16rem' : '5rem',
-        marginRight: (isChatOpen || isReferentialOpen) ? '24rem' : '0'
+        marginRight: (isChatOpen || isReferentialOpen || isReviewPanelOpen) ? '24rem' : '0'
       }"
     >
       <!-- Header -->
@@ -24,6 +24,7 @@
         @toggle-magic-import="isMagicImportOpen = true"
         @toggle-export="isExportOpen = true"
         @toggle-referential="isReferentialOpen = !isReferentialOpen"
+        @toggle-reviews="isReviewPanelOpen = !isReviewPanelOpen"
       />
 
       <!-- Router View -->
@@ -52,6 +53,12 @@
     <ReferentialPanel
       :is-open="isReferentialOpen"
       @close="isReferentialOpen = false"
+    />
+
+    <!-- Review Request Panel -->
+    <ReviewRequestPanel
+      :is-open="isReviewPanelOpen"
+      @close="isReviewPanelOpen = false"
     />
 
     <!-- Magic Import Modal -->
@@ -92,6 +99,9 @@ import ReferentialPanel from './components/common/ReferentialPanel.vue'
 import MagicImport from './components/ai/MagicImport.vue'
 import ExportModal from './components/common/ExportModal.vue'
 import OnboardingTour from './components/common/OnboardingTour.vue'
+import ReviewRequestPanel from './components/review/ReviewRequestPanel.vue'
+import { useReviewRequests } from './composables/useReviewRequests'
+import { useGamification } from './composables/useGamification'
 
 const authStore = useAuthStore()
 const competencesStore = useCompetencesStore()
@@ -100,9 +110,13 @@ const notificationsStore = useNotificationsStore()
 const { isOpen: sidebarIsOpen } = useSidebar()
 const { loadHistory, cleanup: cleanupAICache } = useAICache()
 
+const { loadReviewRequests, cleanup: cleanupReviews } = useReviewRequests()
+const { loadStats: loadGamification, cleanup: cleanupGamification } = useGamification()
+
 const isChatOpen = ref(false)
 const isHistoryOpen = ref(false)
 const isReferentialOpen = ref(false)
+const isReviewPanelOpen = ref(false)
 const isMagicImportOpen = ref(false)
 const isExportOpen = ref(false)
 const videoConference = ref<InstanceType<typeof VideoConference>>()
@@ -121,6 +135,8 @@ const handleKeydown = (e: KeyboardEvent) => {
       isMagicImportOpen.value = false
     } else if (isExportOpen.value) {
       isExportOpen.value = false
+    } else if (isReviewPanelOpen.value) {
+      isReviewPanelOpen.value = false
     } else if (isReferentialOpen.value) {
       isReferentialOpen.value = false
     } else if (isHistoryOpen.value) {
@@ -147,10 +163,13 @@ const handleKeydown = (e: KeyboardEvent) => {
           isExportOpen.value = true
         }
         break
-      case 'r': // Referential
+      case 'r': // Reviews or Referential
         if (e.shiftKey) {
           e.preventDefault()
           isReferentialOpen.value = !isReferentialOpen.value
+        } else {
+          e.preventDefault()
+          isReviewPanelOpen.value = !isReviewPanelOpen.value
         }
         break
     }
@@ -162,6 +181,8 @@ onMounted(() => {
   competencesStore.loadData()
   chatStore.loadMessages()
   notificationsStore.loadNotifications()
+  loadReviewRequests()
+  loadGamification()
   loadHistory()
   requestNotificationPermission()
 
@@ -173,6 +194,8 @@ onUnmounted(() => {
   competencesStore.cleanup()
   chatStore.cleanup()
   notificationsStore.cleanup()
+  cleanupReviews()
+  cleanupGamification()
   cleanupAICache()
 
   window.removeEventListener('keydown', handleKeydown)

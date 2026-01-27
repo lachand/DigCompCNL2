@@ -64,6 +64,51 @@
       :data="competencesStore.digCompData"
     />
 
+    <!-- Upcoming Deadlines -->
+    <div v-if="upcomingDeadlines.length > 0" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+      <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+        <i class="ph ph-alarm text-red-500"></i>
+        Deadlines proches
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div
+          v-for="dl in upcomingDeadlines"
+          :key="dl.key"
+          class="flex items-center gap-3 p-3 rounded-lg"
+          :class="dl.isOverdue
+            ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+            : dl.isSoon
+              ? 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800'
+              : 'bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600'"
+        >
+          <i
+            class="ph text-lg"
+            :class="dl.isOverdue ? 'ph-alarm text-red-500' : dl.isSoon ? 'ph-warning text-orange-500' : 'ph-calendar text-gray-400'"
+          ></i>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ dl.outcomeId }} ({{ dl.year }})</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ dl.label }}</p>
+          </div>
+          <span
+            class="text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap"
+            :class="dl.isOverdue
+              ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+              : dl.isSoon
+                ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                : 'bg-gray-100 text-gray-600 dark:bg-gray-600 dark:text-gray-300'"
+          >
+            {{ dl.daysLabel }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gamification Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <UserStatsCard />
+      <LeaderboardWidget />
+    </div>
+
     <!-- Activity Feed -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2">
@@ -102,6 +147,8 @@ import KPICard from '@/components/dashboard/KPICard.vue'
 import ProgressChart from '@/components/dashboard/ProgressChart.vue'
 import SunburstChart from '@/components/dashboard/SunburstChart.vue'
 import ActivityFeed from '@/components/history/ActivityFeed.vue'
+import UserStatsCard from '@/components/gamification/UserStatsCard.vue'
+import LeaderboardWidget from '@/components/gamification/LeaderboardWidget.vue'
 import type { YearLevel } from '@/types'
 
 const competencesStore = useCompetencesStore()
@@ -141,6 +188,54 @@ const kpis = computed(() => {
     totalAssignments,
     uniqueTags
   }
+})
+
+const upcomingDeadlines = computed(() => {
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  const allOutcomes = competencesStore.allOutcomes
+  const deadlines: Array<{
+    key: string
+    outcomeId: string
+    year: string
+    label: string
+    date: number
+    isOverdue: boolean
+    isSoon: boolean
+    daysLabel: string
+  }> = []
+
+  for (const outcome of allOutcomes) {
+    for (const year of ['L1', 'L2', 'L3'] as YearLevel[]) {
+      const dl = outcome.mappings[year]?.deadline
+      if (dl) {
+        const target = new Date(dl.date)
+        target.setHours(0, 0, 0, 0)
+        const days = Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        // Show overdue + upcoming within 14 days
+        if (days <= 14) {
+          deadlines.push({
+            key: `${outcome.id}-${year}`,
+            outcomeId: outcome.id,
+            year,
+            label: dl.label,
+            date: dl.date,
+            isOverdue: days < 0,
+            isSoon: days >= 0 && days <= 3,
+            daysLabel: days < 0
+              ? `${Math.abs(days)}j en retard`
+              : days === 0
+                ? "Aujourd'hui"
+                : days === 1
+                  ? 'Demain'
+                  : `Dans ${days}j`
+          })
+        }
+      }
+    }
+  }
+
+  return deadlines.sort((a, b) => a.date - b.date)
 })
 
 const statusChartData = computed(() => {

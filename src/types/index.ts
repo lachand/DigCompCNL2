@@ -147,6 +147,46 @@ export interface Notification {
   read?: boolean
 }
 
+export type ReviewStatus = 'pending' | 'approved' | 'rejected'
+
+export interface ReviewRequest {
+  id?: string
+  outcomeId: string
+  year: YearLevel
+  requestedBy: string
+  reviewer: string
+  status: ReviewStatus
+  comment?: string
+  requestComment?: string
+  createdAt: number
+  resolvedAt?: number
+}
+
+export interface Badge {
+  id: string
+  name: string
+  description: string
+  icon: string
+  earnedAt?: number
+}
+
+export interface UserStats {
+  id?: string
+  userId: string
+  points: number
+  badges: string[]
+  currentStreak: number
+  longestStreak: number
+  lastActivityDate: string
+  actionCounts: {
+    statusChanges: number
+    reviews: number
+    validations: number
+    comments: number
+    resources: number
+  }
+}
+
 export interface Lock {
   user: string
   timestamp: number

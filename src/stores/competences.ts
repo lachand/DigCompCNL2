@@ -32,6 +32,7 @@ import type {
 import { useAuthStore } from './auth'
 import { useNotificationsStore } from './notifications'
 import { useToast } from '@/composables/useToast'
+import { useGamification } from '@/composables/useGamification'
 
 export const useCompetencesStore = defineStore('competences', () => {
   const digCompData = ref<DigCompData>({ domains: [] })
@@ -199,6 +200,13 @@ export const useCompetencesStore = defineStore('competences', () => {
         authStore.currentUser?.email || ''
       )
     }
+
+    // Gamification
+    const { recordAction } = useGamification()
+    await recordAction('statusChange')
+    if (status === 'validated') {
+      await recordAction('validation')
+    }
   }
 
   const updateCourseLink = async (
@@ -250,6 +258,10 @@ export const useCompetencesStore = defineStore('competences', () => {
     })
 
     success('Ressource ajoutée')
+
+    // Gamification
+    const { recordAction } = useGamification()
+    await recordAction('resource')
   }
 
   const reorderResources = async (
@@ -393,6 +405,10 @@ export const useCompetencesStore = defineStore('competences', () => {
         authStore.currentUser?.email || ''
       )
     }
+
+    // Gamification
+    const { recordAction } = useGamification()
+    await recordAction('comment')
   }
 
   const removeComment = async (outcomeId: string, commentIndex: number) => {

@@ -119,4 +119,36 @@ const hasCourseLink = computed(() => {
     !!props.outcome.mappings?.[year as YearLevel]?.courseLink
   )
 })
+
+const deadlineStatus = computed<'overdue' | 'soon' | 'normal' | null>(() => {
+  if (!props.outcome.mappings) return null
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  let closest: number | null = null
+
+  for (const year of ['L1', 'L2', 'L3'] as YearLevel[]) {
+    const dl = props.outcome.mappings[year]?.deadline
+    if (dl) {
+      if (closest === null || dl.date < closest) closest = dl.date
+    }
+  }
+
+  if (closest === null) return null
+  const days = Math.ceil((closest - now.getTime()) / (1000 * 60 * 60 * 24))
+  if (days < 0) return 'overdue'
+  if (days <= 3) return 'soon'
+  return 'normal'
+})
+
+const deadlineTitle = computed(() => {
+  if (!props.outcome.mappings) return ''
+  const parts: string[] = []
+  for (const year of ['L1', 'L2', 'L3'] as YearLevel[]) {
+    const dl = props.outcome.mappings[year]?.deadline
+    if (dl) {
+      parts.push(`${year}: ${dl.label} (${new Date(dl.date).toLocaleDateString('fr-FR')})`)
+    }
+  }
+  return parts.join(' | ')
+})
 </script>

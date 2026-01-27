@@ -98,7 +98,7 @@
     </div>
 
     <!-- Upcoming Events -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Upcoming Reviews -->
       <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -121,6 +121,7 @@
               <p class="text-sm text-gray-600 dark:text-gray-400">{{ formatDate(event.date) }}</p>
             </div>
             <button
+              v-if="!event.isFromDeadline"
               @click="deleteEvent(event.id)"
               class="p-1 hover:bg-red-100 dark:hover:bg-red-900/20 text-red-500 rounded"
             >
@@ -152,11 +153,55 @@
               <p class="text-sm text-gray-600 dark:text-gray-400">{{ formatDate(event.date) }}</p>
             </div>
             <button
+              v-if="!event.isFromDeadline"
               @click="deleteEvent(event.id)"
               class="p-1 hover:bg-red-100 dark:hover:bg-red-900/20 text-red-500 rounded"
             >
               <i class="ph ph-trash"></i>
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming Deadlines from LOs -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+          <i class="ph ph-alarm text-red-500"></i>
+          Deadlines LO
+        </h3>
+        <div v-if="upcomingDeadlines.length === 0" class="text-center py-8 text-gray-500">
+          <i class="ph ph-calendar-blank text-4xl mb-2"></i>
+          <p>Aucune deadline definie</p>
+        </div>
+        <div v-else class="space-y-3">
+          <div
+            v-for="dl in upcomingDeadlines"
+            :key="dl.id"
+            class="flex items-center gap-3 p-3 rounded-lg"
+            :class="dl.isOverdue
+              ? 'bg-red-50 dark:bg-red-900/20'
+              : dl.isSoon
+                ? 'bg-orange-50 dark:bg-orange-900/20'
+                : 'bg-gray-50 dark:bg-gray-700'"
+          >
+            <div
+              class="w-2 h-2 rounded-full"
+              :class="dl.isOverdue ? 'bg-red-500' : dl.isSoon ? 'bg-orange-500' : 'bg-gray-400'"
+            ></div>
+            <div class="flex-1">
+              <p class="font-medium text-gray-900 dark:text-white">{{ dl.title }}</p>
+              <p class="text-sm text-gray-600 dark:text-gray-400">{{ dl.label }} — {{ formatDate(dl.date) }}</p>
+            </div>
+            <span
+              class="text-xs font-medium px-2 py-0.5 rounded-full"
+              :class="dl.isOverdue
+                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                : dl.isSoon
+                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-600 dark:text-gray-300'"
+            >
+              {{ dl.daysLabel }}
+            </span>
           </div>
         </div>
       </div>
@@ -292,7 +337,10 @@ interface CalendarEvent {
   notes?: string
   createdBy: string
   createdAt: number
+  isFromDeadline?: boolean
 }
+
+import type { YearLevel } from '@/types'
 
 const competencesStore = useCompetencesStore()
 const authStore = useAuthStore()
@@ -385,9 +433,37 @@ const calendarDays = computed(() => {
   return days
 })
 
+// Computed: deadlines extracted from LO mappings as CalendarEvents
+const deadlineEvents = computed<CalendarEvent[]>(() => {
+  const result: CalendarEvent[] = []
+  for (const outcome of competencesStore.allOutcomes) {
+    for (const year of ['L1', 'L2', 'L3'] as YearLevel[]) {
+      const dl = outcome.mappings[year]?.deadline
+      if (dl) {
+        const dateStr = new Date(dl.date).toISOString().split('T')[0]
+        result.push({
+          id: `dl-${outcome.id}-${year}`,
+          type: 'deadline',
+          outcomeId: outcome.id,
+          year,
+          date: dateStr,
+          title: `${outcome.id} (${year}) — ${dl.label}`,
+          createdBy: '',
+          createdAt: 0,
+          isFromDeadline: true
+        })
+      }
+    }
+  }
+  return result
+})
+
+// Merge Firestore events + LO deadline events
+const allEvents = computed(() => [...events.value, ...deadlineEvents.value])
+
 const upcomingReviews = computed(() => {
   const today = new Date().toISOString().split('T')[0]
-  return events.value
+  return allEvents.value
     .filter(e => e.type === 'review' && e.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 5)
@@ -395,14 +471,41 @@ const upcomingReviews = computed(() => {
 
 const upcomingValidations = computed(() => {
   const today = new Date().toISOString().split('T')[0]
-  return events.value
+  return allEvents.value
     .filter(e => e.type === 'validation' && e.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 5)
 })
 
+const upcomingDeadlines = computed(() => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const todayStr = today.toISOString().split('T')[0]
+
+  return deadlineEvents.value
+    .map(e => {
+      const dlDate = new Date(e.date + 'T00:00:00')
+      const days = Math.ceil((dlDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      return {
+        ...e,
+        label: e.title.split(' — ')[1] || '',
+        isOverdue: days < 0,
+        isSoon: days >= 0 && days <= 3,
+        daysLabel: days < 0
+          ? `${Math.abs(days)}j en retard`
+          : days === 0
+            ? "Aujourd'hui"
+            : days === 1
+              ? 'Demain'
+              : `Dans ${days}j`
+      }
+    })
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 8)
+})
+
 function getEventsForDay(date: string): CalendarEvent[] {
-  return events.value.filter(e => e.date === date)
+  return allEvents.value.filter(e => e.date === date)
 }
 
 function getEventClass(type: string): string {

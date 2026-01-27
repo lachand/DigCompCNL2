@@ -80,6 +80,18 @@
         </span>
       </button>
 
+      <!-- Reviews -->
+      <button
+        @click="$emit('toggle-reviews')"
+        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition relative text-gray-600 dark:text-gray-300"
+        title="Reviews"
+      >
+        <i class="ph ph-checks text-xl"></i>
+        <span v-if="reviewPendingCount > 0" class="absolute top-1 right-1 w-5 h-5 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center">
+          {{ reviewPendingCount }}
+        </span>
+      </button>
+
       <!-- Chat Toggle -->
       <button
         @click="$emit('toggle-chat')"
@@ -151,6 +163,18 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Gamification indicators -->
+      <div v-if="gamificationStats" class="flex items-center gap-2 text-sm">
+        <span v-if="gamificationStats.currentStreak > 0" class="flex items-center gap-0.5 text-orange-500" title="Streak d'activité">
+          <i class="ph ph-fire"></i>
+          <span class="font-medium">{{ gamificationStats.currentStreak }}</span>
+        </span>
+        <span class="flex items-center gap-0.5 text-yellow-600 dark:text-yellow-400" title="Points">
+          <i class="ph ph-star"></i>
+          <span class="font-medium">{{ gamificationStats.points }}</span>
+        </span>
       </div>
 
       <!-- User Avatar (click to open settings) -->
@@ -293,6 +317,8 @@ import { formatDate } from '@/utils/helpers'
 import { SOUND_OPTIONS, AI_MODELS } from '@/types'
 import UserAvatar from '@/components/auth/UserAvatar.vue'
 import { useOnboardingTour } from '@/composables/useOnboardingTour'
+import { useReviewRequests } from '@/composables/useReviewRequests'
+import { useGamification } from '@/composables/useGamification'
 
 defineProps<{
   videoActive?: boolean
@@ -313,6 +339,7 @@ defineEmits<{
   'toggle-magic-import': []
   'toggle-export': []
   'toggle-referential': []
+  'toggle-reviews': []
 }>()
 
 const route = useRoute()
@@ -322,6 +349,9 @@ const notificationsStore = useNotificationsStore()
 const darkMode = useDarkMode()
 const { validateApiKey } = useGemini()
 const { success, error: showError } = useToast()
+
+const { pendingCount: reviewPendingCount } = useReviewRequests()
+const { userStats: gamificationStats } = useGamification()
 
 const searchQuery = ref('')
 const showNotifications = ref(false)

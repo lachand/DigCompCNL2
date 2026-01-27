@@ -187,6 +187,46 @@ export const useNotificationsStore = defineStore('notifications', () => {
     })
   }
 
+  const notifyReviewRequest = async (
+    outcomeId: string,
+    year: string,
+    reviewerEmail: string,
+    requesterEmail: string,
+    comment?: string
+  ) => {
+    await createNotification({
+      type: 'assignment',
+      title: 'Demande de review',
+      message: `${requesterEmail.split('@')[0]} demande votre review pour ${outcomeId} (${year})${comment ? ` : "${comment.substring(0, 50)}"` : ''}`,
+      outcomeId,
+      year,
+      targetUser: reviewerEmail,
+      createdBy: requesterEmail,
+      link: `/outcomes?lo=${outcomeId}`
+    })
+  }
+
+  const notifyReviewResult = async (
+    outcomeId: string,
+    year: string,
+    status: 'approved' | 'rejected',
+    requesterEmail: string,
+    reviewerEmail: string,
+    comment?: string
+  ) => {
+    const statusLabel = status === 'approved' ? 'approuvée' : 'rejetée'
+    await createNotification({
+      type: 'status_change',
+      title: `Review ${statusLabel}`,
+      message: `${reviewerEmail.split('@')[0]} a ${statusLabel} votre review pour ${outcomeId} (${year})${comment ? ` : "${comment.substring(0, 50)}"` : ''}`,
+      outcomeId,
+      year,
+      targetUser: requesterEmail,
+      createdBy: reviewerEmail,
+      link: `/outcomes?lo=${outcomeId}`
+    })
+  }
+
   const cleanup = () => {
     if (unsubscribe) {
       unsubscribe()
@@ -209,6 +249,8 @@ export const useNotificationsStore = defineStore('notifications', () => {
     notifyStatusChange,
     notifyComment,
     notifyCalendarEvent,
+    notifyReviewRequest,
+    notifyReviewResult,
     cleanup
   }
 })

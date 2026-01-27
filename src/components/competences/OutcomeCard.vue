@@ -103,6 +103,66 @@
           />
         </div>
 
+        <!-- Review Status / Request -->
+        <div v-if="outcome.mappings[year]?.status === 'review'" class="mb-3">
+          <div v-if="getActiveReview(outcome.id, year)" class="flex items-center gap-2 px-2 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-xs">
+            <i class="ph ph-hourglass text-blue-500"></i>
+            <span class="text-blue-700 dark:text-blue-400">
+              Review en cours par <strong>{{ getActiveReview(outcome.id, year)!.reviewer.split('@')[0] }}</strong>
+            </span>
+          </div>
+          <div v-else>
+            <button
+              @click="openReviewPopover(year)"
+              class="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition"
+            >
+              <i class="ph ph-user-check"></i>
+              Demander une review
+            </button>
+          </div>
+        </div>
+
+        <!-- Review Request Popover -->
+        <div
+          v-if="reviewPopoverYear === year"
+          class="mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 space-y-2"
+        >
+          <select
+            v-model="reviewSelectedUser"
+            class="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          >
+            <option value="">Choisir un reviewer</option>
+            <option
+              v-for="user in availableReviewers"
+              :key="user.email"
+              :value="user.email"
+            >
+              {{ user.email.split('@')[0] }}
+            </option>
+          </select>
+          <textarea
+            v-model="reviewComment"
+            rows="2"
+            placeholder="Message (optionnel)"
+            class="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          ></textarea>
+          <div class="flex gap-2">
+            <button
+              @click="reviewPopoverYear = null"
+              class="flex-1 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded"
+            >
+              Annuler
+            </button>
+            <button
+              @click="sendReviewRequest(year)"
+              :disabled="!reviewSelectedUser"
+              class="flex-1 px-2 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded"
+            >
+              Envoyer
+            </button>
+          </div>
+        </div>
+
         <!-- Deadline Badge -->
         <div v-if="outcome.mappings[year]?.deadline" class="mb-3">
           <div
@@ -217,6 +277,7 @@ import AssigneeManager from './AssigneeManager.vue'
 import AIAssistant from '@/components/ai/AIAssistant.vue'
 import ResourceHunter from './ResourceHunter.vue'
 import UserAvatar from '@/components/auth/UserAvatar.vue'
+import { useReviewRequests } from '@/composables/useReviewRequests'
 import type { LearningOutcome, YearLevel, Deadline } from '@/types'
 
 interface Props {
@@ -236,10 +297,41 @@ defineEmits<{
 
 const authStore = useAuthStore()
 const competencesStore = useCompetencesStore()
+const { getReviewForOutcome, createReviewRequest } = useReviewRequests()
 
 const expanded = ref(false)
 const showAIAssistant = ref(false)
 const showResourceHunter = ref(false)
+
+// Review popover state
+const reviewPopoverYear = ref<YearLevel | null>(null)
+const reviewSelectedUser = ref('')
+const reviewComment = ref('')
+
+const availableReviewers = computed(() => {
+  return authStore.users.filter(u => u.email !== authStore.currentUser?.email)
+})
+
+function openReviewPopover(year: YearLevel) {
+  reviewPopoverYear.value = year
+  reviewSelectedUser.value = ''
+  reviewComment.value = ''
+}
+
+function getActiveReview(outcomeId: string, year: YearLevel) {
+  return getReviewForOutcome(outcomeId, year)
+}
+
+async function sendReviewRequest(year: YearLevel) {
+  if (!reviewSelectedUser.value) return
+  await createReviewRequest(
+    props.outcome.id,
+    year,
+    reviewSelectedUser.value,
+    reviewComment.value || undefined
+  )
+  reviewPopoverYear.value = null
+}
 
 // Deadline popover state
 const deadlinePopoverYear = ref<YearLevel | null>(null)
