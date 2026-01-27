@@ -73,6 +73,7 @@ import { RouterView } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import { useCompetencesStore } from './stores/competences'
 import { useChatStore } from './stores/chat'
+import { useNotificationsStore } from './stores/notifications'
 import { useSidebar } from './composables/useSidebar'
 import { useAICache } from './composables/useAICache'
 import { requestNotificationPermission } from './utils/helpers'
@@ -90,6 +91,7 @@ import ExportModal from './components/common/ExportModal.vue'
 const authStore = useAuthStore()
 const competencesStore = useCompetencesStore()
 const chatStore = useChatStore()
+const notificationsStore = useNotificationsStore()
 const { isOpen: sidebarIsOpen } = useSidebar()
 const { loadHistory, cleanup: cleanupAICache } = useAICache()
 
@@ -154,6 +156,7 @@ onMounted(() => {
   authStore.initAuth()
   competencesStore.loadData()
   chatStore.loadMessages()
+  notificationsStore.loadNotifications()
   loadHistory()
   requestNotificationPermission()
 
@@ -164,6 +167,7 @@ onMounted(() => {
 onUnmounted(() => {
   competencesStore.cleanup()
   chatStore.cleanup()
+  notificationsStore.cleanup()
   cleanupAICache()
 
   window.removeEventListener('keydown', handleKeydown)

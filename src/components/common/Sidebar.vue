@@ -178,6 +178,7 @@ const simpleMenuItems = computed(() => [
 const bottomMenuItems = computed(() => [
   { path: '/overview', label: 'Vue d\'ensemble', icon: 'ph-eye' },
   { path: '/kanban', label: 'Kanban', icon: 'ph-kanban' },
+  { path: '/calendar', label: 'Calendrier', icon: 'ph-calendar' },
   { path: '/comparison', label: 'Comparaison', icon: 'ph-columns' },
   { path: '/statistics', label: 'Statistiques', icon: 'ph-chart-bar' }
 ])

@@ -93,31 +93,55 @@
           class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition relative text-gray-600 dark:text-gray-300"
         >
           <i class="ph ph-bell text-xl"></i>
-          <span v-if="unreadNotifications > 0" class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+          <span v-if="notificationsStore.unreadCount > 0" class="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+            {{ notificationsStore.unreadCount > 9 ? '9+' : notificationsStore.unreadCount }}
+          </span>
         </button>
 
         <!-- Notifications Dropdown -->
         <div
           v-if="showNotifications"
           v-click-away="() => showNotifications = false"
-          class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50"
+          class="absolute right-0 mt-2 w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50"
         >
-          <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+          <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <h3 class="font-semibold text-gray-900 dark:text-white">Notifications</h3>
+            <button
+              v-if="notificationsStore.unreadCount > 0"
+              @click="notificationsStore.markAllAsRead()"
+              class="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+            >
+              Tout marquer comme lu
+            </button>
           </div>
           <div class="max-h-96 overflow-y-auto">
-            <div v-if="notifications.length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
+            <div v-if="notificationsStore.sortedNotifications.length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
               <i class="ph ph-bell-slash text-4xl mb-2"></i>
               <p>Aucune notification</p>
             </div>
             <div
-              v-for="notif in notifications"
+              v-for="notif in notificationsStore.sortedNotifications"
               :key="notif.id"
-              class="p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+              @click="handleNotificationClick(notif)"
+              class="p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer flex gap-3"
+              :class="{ 'bg-indigo-50 dark:bg-indigo-900/10': !notif.read }"
             >
-              <p class="font-medium text-gray-900 dark:text-white">{{ notif.title }}</p>
-              <p class="text-sm text-gray-600 dark:text-gray-400">{{ notif.message }}</p>
-              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ formatDate(notif.timestamp) }}</p>
+              <div class="flex-shrink-0">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center" :class="getNotificationIconClass(notif.type)">
+                  <i :class="getNotificationIcon(notif.type)"></i>
+                </div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-gray-900 dark:text-white text-sm">{{ notif.title }}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400 truncate">{{ notif.message }}</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ formatDate(notif.createdAt) }}</p>
+              </div>
+              <button
+                @click.stop="notificationsStore.deleteNotification(notif.id!)"
+                class="p-1 hover:bg-red-100 dark:hover:bg-red-900/20 text-red-500 rounded opacity-0 group-hover:opacity-100"
+              >
+                <i class="ph ph-x text-sm"></i>
+              </button>
             </div>
           </div>
         </div>
@@ -244,6 +268,7 @@ import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
+import { useNotificationsStore } from '@/stores/notifications'
 import { useDarkMode } from '@/composables/useDarkMode'
 import { useGemini } from '@/composables/useGemini'
 import { useToast } from '@/composables/useToast'
@@ -263,6 +288,7 @@ defineEmits<{
 const route = useRoute()
 const authStore = useAuthStore()
 const chatStore = useChatStore()
+const notificationsStore = useNotificationsStore()
 const darkMode = useDarkMode()
 const { validateApiKey } = useGemini()
 const { success, error: showError } = useToast()
@@ -270,8 +296,6 @@ const { success, error: showError } = useToast()
 const searchQuery = ref('')
 const showNotifications = ref(false)
 const showSettings = ref(false)
-const notifications = ref<any[]>([])
-const unreadNotifications = computed(() => notifications.value.filter(n => !n.read).length)
 
 // API Key validation
 const apiKeyInput = ref(authStore.userData?.apiKey || '')
@@ -325,6 +349,9 @@ const pageTitle = computed(() => {
     '/l3': 'Licence 3',
     '/overview': 'Vue d\'ensemble',
     '/kanban': 'Kanban',
+    '/calendar': 'Calendrier',
+    '/comparison': 'Comparaison',
+    '/statistics': 'Statistiques',
     '/chat': 'Chat'
   }
   return titles[route.path] || 'DigComp 3.0'
@@ -333,6 +360,40 @@ const pageTitle = computed(() => {
 const handleSearch = () => {
   // TODO: Implement search
   console.log('Search:', searchQuery.value)
+}
+
+// Notification helpers
+const getNotificationIcon = (type: string) => {
+  const icons: Record<string, string> = {
+    assignment: 'ph ph-user-plus',
+    status_change: 'ph ph-arrow-right',
+    comment: 'ph ph-chat-circle',
+    calendar: 'ph ph-calendar',
+    mention: 'ph ph-at'
+  }
+  return icons[type] || 'ph ph-bell'
+}
+
+const getNotificationIconClass = (type: string) => {
+  const classes: Record<string, string> = {
+    assignment: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+    status_change: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
+    comment: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
+    calendar: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
+    mention: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400'
+  }
+  return classes[type] || 'bg-gray-100 text-gray-600'
+}
+
+const handleNotificationClick = async (notif: any) => {
+  if (!notif.read) {
+    await notificationsStore.markAsRead(notif.id)
+  }
+  if (notif.link) {
+    showNotifications.value = false
+    // Navigate using router would be cleaner but this works for now
+    window.location.href = notif.link
+  }
 }
 
 // Simple click-away directive alternative
