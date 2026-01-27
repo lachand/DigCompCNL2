@@ -68,10 +68,15 @@
       <!-- Video Conference -->
       <button
         @click="$emit('toggle-video')"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
+        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition relative"
+        :class="videoActive ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-300'"
         title="Visioconférence"
       >
         <i class="ph ph-video-camera text-xl"></i>
+        <span v-if="videoActive" class="absolute top-1 right-1 flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+        </span>
       </button>
 
       <!-- Chat Toggle -->
@@ -275,6 +280,10 @@ import { useToast } from '@/composables/useToast'
 import { formatDate } from '@/utils/helpers'
 import { SOUND_OPTIONS, AI_MODELS } from '@/types'
 import UserAvatar from '@/components/auth/UserAvatar.vue'
+
+defineProps<{
+  videoActive?: boolean
+}>()
 
 defineEmits<{
   'toggle-chat': []

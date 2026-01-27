@@ -17,6 +17,7 @@
     >
       <!-- Header -->
       <Header
+        :video-active="videoConference?.isActive?.value ?? false"
         @toggle-chat="isChatOpen = !isChatOpen"
         @toggle-video="toggleVideo"
         @toggle-history="isHistoryOpen = !isHistoryOpen"
