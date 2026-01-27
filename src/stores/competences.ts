@@ -29,6 +29,7 @@ import type {
   Snapshot
 } from '@/types'
 import { useAuthStore } from './auth'
+import { useNotificationsStore } from './notifications'
 import { useToast } from '@/composables/useToast'
 
 export const useCompetencesStore = defineStore('competences', () => {
@@ -184,6 +185,19 @@ export const useCompetencesStore = defineStore('competences', () => {
       detail: `${outcomeId} (${year}) : ${status}`,
       date: Date.now()
     })
+
+    // Notify assignees
+    const notificationsStore = useNotificationsStore()
+    const assignees = outcome.assignees || []
+    if (assignees.length > 0) {
+      await notificationsStore.notifyStatusChange(
+        outcomeId,
+        year,
+        status,
+        assignees,
+        authStore.currentUser?.email || ''
+      )
+    }
   }
 
   const updateCourseLink = async (
@@ -289,6 +303,7 @@ export const useCompetencesStore = defineStore('competences', () => {
     }
 
     const index = outcome.assignees.indexOf(email)
+    const isAdding = index === -1
     if (index > -1) {
       outcome.assignees.splice(index, 1)
     } else {
@@ -296,6 +311,18 @@ export const useCompetencesStore = defineStore('competences', () => {
     }
 
     await saveData()
+
+    // Notify the assigned user
+    if (isAdding) {
+      const authStore = useAuthStore()
+      const notificationsStore = useNotificationsStore()
+      await notificationsStore.notifyAssignment(
+        outcomeId,
+        'all',
+        email,
+        authStore.currentUser?.email || ''
+      )
+    }
   }
 
   const toggleTag = async (outcomeId: string, tag: string) => {
@@ -338,6 +365,18 @@ export const useCompetencesStore = defineStore('competences', () => {
 
     outcome.comments.push(comment)
     await saveData()
+
+    // Notify assignees about the new comment
+    const notificationsStore = useNotificationsStore()
+    const assignees = outcome.assignees || []
+    if (assignees.length > 0) {
+      await notificationsStore.notifyComment(
+        outcomeId,
+        text,
+        assignees,
+        authStore.currentUser?.email || ''
+      )
+    }
   }
 
   const removeComment = async (outcomeId: string, commentIndex: number) => {

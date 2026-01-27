@@ -62,11 +62,6 @@ export const useNotificationsStore = defineStore('notifications', () => {
   }
 
   const createNotification = async (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
-    const authStore = useAuthStore()
-
-    // Don't notify yourself
-    if (notification.targetUser === authStore.currentUser?.email) return
-
     try {
       await addDoc(collection(db, 'notifications'), {
         ...notification,
