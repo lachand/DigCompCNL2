@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  test:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     strategy:
@@ -15,26 +15,33 @@ jobs:
         node-version: [18.x, 20.x]
 
     steps:
+    # 1. Récupération du code
     - uses: actions/checkout@v4
 
+    # 2. Installation de Node.js avec Cache
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
 
+    # 3. Installation PROPRE (Nécessite package-lock.json)
     - name: Install dependencies
       run: npm ci
 
+    # 4. Vérification de la qualité (Lint)
     - name: Run linter
       run: npm run lint
 
+    # 5. Tests Unitaires
     - name: Run tests
       run: npm run test
 
+    # 6. Build de l'application (Génère le dossier dist/)
     - name: Build
       run: npm run build
 
+    # 7. Upload du rapport de couverture (Uniquement sur la version principale)
     - name: Upload coverage to Codecov
       if: matrix.node-version == '20.x'
       uses: codecov/codecov-action@v4
@@ -43,3 +50,11 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
+
+    - name: Deploy to Firebase Production
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push' && matrix.node-version == '20.x'
+      uses: w9jds/firebase-action@master
+      with:
+        args: deploy --only hosting
+      env:
+        GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
