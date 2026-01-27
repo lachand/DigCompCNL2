@@ -65,6 +65,9 @@
 
     <!-- Video Conference -->
     <VideoConference ref="videoConference" />
+
+    <!-- Onboarding Tour -->
+    <OnboardingTour v-if="authStore.currentUser" />
   </div>
 </template>
 
@@ -88,6 +91,7 @@ import ActivityHistoryPanel from './components/history/ActivityHistoryPanel.vue'
 import ReferentialPanel from './components/common/ReferentialPanel.vue'
 import MagicImport from './components/ai/MagicImport.vue'
 import ExportModal from './components/common/ExportModal.vue'
+import OnboardingTour from './components/common/OnboardingTour.vue'
 
 const authStore = useAuthStore()
 const competencesStore = useCompetencesStore()

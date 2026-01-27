@@ -1,5 +1,6 @@
 <template>
   <aside
+    data-tour="sidebar"
     class="fixed left-0 top-0 h-screen bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 z-40"
     :class="isOpen ? 'w-64' : 'w-20'"
   >

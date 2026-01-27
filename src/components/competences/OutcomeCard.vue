@@ -7,6 +7,19 @@
       selected ? 'ring-2 ring-indigo-500' : ''
     ]"
   >
+    <!-- Lock Conflict Banner (always visible) -->
+    <div v-if="lockedBy" class="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800 flex items-center gap-2">
+      <span class="relative flex h-2.5 w-2.5">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+      </span>
+      <i class="ph ph-lock-key text-red-600 dark:text-red-400"></i>
+      <span class="text-xs font-medium text-red-700 dark:text-red-300">
+        En cours d'edition par <strong>{{ lockedBy.split('@')[0] }}</strong>
+      </span>
+      <UserAvatar :email="lockedBy" :size="20" class="ml-auto" />
+    </div>
+
     <!-- Header -->
     <div class="p-4 border-b border-gray-200 dark:border-gray-700">
       <div class="flex items-start justify-between gap-3">
@@ -37,6 +50,7 @@
         <!-- Actions -->
         <div class="flex items-center gap-1">
           <button
+            data-tour="ai-assistant"
             @click="showAIAssistant = true"
             class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
             title="Assistant IA"
@@ -115,13 +129,6 @@
       <!-- Comments -->
       <CommentsList :outcome="outcome" />
 
-      <!-- Lock Warning -->
-      <div v-if="lockedBy" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-        <div class="flex items-center gap-2 text-red-700 dark:text-red-400">
-          <i class="ph ph-lock-key"></i>
-          <span class="text-sm">Verrouillé par <strong>{{ lockedBy }}</strong></span>
-        </div>
-      </div>
     </div>
 
     <!-- AI Assistant Modal -->
@@ -143,6 +150,7 @@ import TagManager from './TagManager.vue'
 import AssigneeManager from './AssigneeManager.vue'
 import AIAssistant from '@/components/ai/AIAssistant.vue'
 import ResourceHunter from './ResourceHunter.vue'
+import UserAvatar from '@/components/auth/UserAvatar.vue'
 import type { LearningOutcome, YearLevel } from '@/types'
 
 interface Props {

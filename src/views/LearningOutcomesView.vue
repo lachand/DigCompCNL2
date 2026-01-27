@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div data-tour="outcomes-view" class="space-y-6">
     <!-- Global Progress Indicator (sticky) -->
     <div
       v-if="view.showGlobalProgress"
@@ -57,7 +57,7 @@
     </nav>
 
     <!-- Filters & Actions Bar -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+    <div data-tour="filters" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
       <div class="flex flex-wrap items-center gap-4">
         <!-- Search -->
         <div class="flex-1 min-w-[200px]">

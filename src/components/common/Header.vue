@@ -4,6 +4,7 @@
     <div class="flex items-center gap-4">
       <!-- Activity History -->
       <button
+        data-tour="history"
         @click="$emit('toggle-history')"
         class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
         title="Historique d'activité"
@@ -16,7 +17,7 @@
     </div>
 
     <!-- Actions -->
-    <div class="flex items-center gap-4">
+    <div data-tour="header-actions" class="flex items-center gap-4">
       <!-- Search -->
       <div class="relative hidden md:block">
         <input
@@ -92,7 +93,7 @@
       </button>
 
       <!-- Notifications -->
-      <div class="relative">
+      <div data-tour="notifications" class="relative">
         <button
           @click="showNotifications = !showNotifications"
           class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition relative text-gray-600 dark:text-gray-300"
@@ -153,7 +154,7 @@
       </div>
 
       <!-- User Avatar (click to open settings) -->
-      <div class="relative">
+      <div data-tour="user-menu" class="relative">
         <button
           @click="showSettings = !showSettings"
           class="rounded-full hover:ring-2 hover:ring-indigo-400 transition"
@@ -261,6 +262,17 @@
                 </div>
               </div>
             </div>
+
+            <!-- Restart Tour -->
+            <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                @click="restartTour"
+                class="w-full py-2 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition flex items-center justify-center gap-2"
+              >
+                <i class="ph ph-compass"></i>
+                Relancer la visite guidee
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -280,10 +292,19 @@ import { useToast } from '@/composables/useToast'
 import { formatDate } from '@/utils/helpers'
 import { SOUND_OPTIONS, AI_MODELS } from '@/types'
 import UserAvatar from '@/components/auth/UserAvatar.vue'
+import { useOnboardingTour } from '@/composables/useOnboardingTour'
 
 defineProps<{
   videoActive?: boolean
 }>()
+
+const onboardingTour = useOnboardingTour()
+
+const restartTour = () => {
+  onboardingTour.resetTour()
+  onboardingTour.startTour()
+  showSettings.value = false
+}
 
 defineEmits<{
   'toggle-chat': []

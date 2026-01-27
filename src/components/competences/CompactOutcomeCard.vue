@@ -46,6 +46,13 @@
       <i v-if="hasResources" class="ph ph-file-text text-xs" title="Ressources"></i>
       <i v-if="hasCourseLink" class="ph ph-link text-xs" title="Lien cours"></i>
       <i v-if="outcome.comments?.length" class="ph ph-chat-circle text-xs" title="Commentaires"></i>
+      <span v-if="lockedBy" class="ml-auto flex items-center gap-1 text-red-500" :title="`En edition par ${lockedBy}`">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+        </span>
+        <i class="ph ph-lock-key text-xs"></i>
+      </span>
     </div>
   </div>
 </template>
@@ -53,6 +60,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useCompetencesStore } from '@/stores/competences'
 import type { LearningOutcome, YearLevel } from '@/types'
 
 interface Props {
@@ -64,8 +72,10 @@ const props = defineProps<Props>()
 defineEmits<{ 'toggle-select': [] }>()
 
 const authStore = useAuthStore()
+const competencesStore = useCompetencesStore()
 
 const isPinned = computed(() => authStore.isPinned(props.outcome.id))
+const lockedBy = computed(() => competencesStore.getLockedBy(props.outcome.id))
 
 const levelClass = computed(() => {
   const classes: Record<string, string> = {

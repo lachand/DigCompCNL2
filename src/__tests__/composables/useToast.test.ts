@@ -4,6 +4,9 @@ import { useToast } from '@/composables/useToast'
 describe('useToast', () => {
   beforeEach(() => {
     vi.useFakeTimers()
+    // Clear module-level shared toasts array between tests
+    const { toasts } = useToast()
+    toasts.value = []
   })
 
   afterEach(() => {
