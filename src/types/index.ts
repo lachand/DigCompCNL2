@@ -42,10 +42,16 @@ export interface Resource {
   }
 }
 
+export interface Deadline {
+  date: number      // timestamp
+  label: string     // ex: "Finalisation L1"
+}
+
 export interface YearMapping {
   status: StatusType
   courseLink?: string
   resources?: Resource[]
+  deadline?: Deadline
 }
 
 export interface Comment {

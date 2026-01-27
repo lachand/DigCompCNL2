@@ -103,6 +103,72 @@
           />
         </div>
 
+        <!-- Deadline Badge -->
+        <div v-if="outcome.mappings[year]?.deadline" class="mb-3">
+          <div
+            class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium"
+            :class="getDeadlineClass(outcome.mappings[year].deadline!)"
+          >
+            <i class="ph" :class="getDeadlineIcon(outcome.mappings[year].deadline!)"></i>
+            <span class="flex-1">
+              {{ outcome.mappings[year].deadline!.label }} —
+              {{ formatDeadlineDate(outcome.mappings[year].deadline!.date) }}
+            </span>
+            <span class="text-[10px] opacity-75">{{ getDeadlineDaysLabel(outcome.mappings[year].deadline!) }}</span>
+            <button
+              @click="removeDeadline(outcome.id, year)"
+              class="p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10"
+              title="Supprimer la deadline"
+            >
+              <i class="ph ph-x text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Set Deadline Button -->
+        <div v-if="!outcome.mappings[year]?.deadline" class="mb-3">
+          <button
+            @click="openDeadlinePopover(year)"
+            class="flex items-center gap-1 text-xs text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
+          >
+            <i class="ph ph-calendar-plus"></i>
+            Définir deadline
+          </button>
+        </div>
+
+        <!-- Deadline Popover -->
+        <div
+          v-if="deadlinePopoverYear === year"
+          class="mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 space-y-2"
+        >
+          <input
+            v-model="deadlineLabel"
+            type="text"
+            placeholder="Label (ex: Finalisation)"
+            class="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          />
+          <input
+            v-model="deadlineDateStr"
+            type="date"
+            class="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          />
+          <div class="flex gap-2">
+            <button
+              @click="deadlinePopoverYear = null"
+              class="flex-1 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded"
+            >
+              Annuler
+            </button>
+            <button
+              @click="saveDeadline(year)"
+              :disabled="!deadlineLabel || !deadlineDateStr"
+              class="flex-1 px-2 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded"
+            >
+              Définir
+            </button>
+          </div>
+        </div>
+
         <!-- Course Link -->
         <div v-if="outcome.mappings[year]?.courseLink" class="mb-3">
           <a
@@ -151,7 +217,7 @@ import AssigneeManager from './AssigneeManager.vue'
 import AIAssistant from '@/components/ai/AIAssistant.vue'
 import ResourceHunter from './ResourceHunter.vue'
 import UserAvatar from '@/components/auth/UserAvatar.vue'
-import type { LearningOutcome, YearLevel } from '@/types'
+import type { LearningOutcome, YearLevel, Deadline } from '@/types'
 
 interface Props {
   outcome: LearningOutcome
@@ -174,6 +240,65 @@ const competencesStore = useCompetencesStore()
 const expanded = ref(false)
 const showAIAssistant = ref(false)
 const showResourceHunter = ref(false)
+
+// Deadline popover state
+const deadlinePopoverYear = ref<YearLevel | null>(null)
+const deadlineLabel = ref('')
+const deadlineDateStr = ref('')
+
+function openDeadlinePopover(year: YearLevel) {
+  deadlinePopoverYear.value = year
+  deadlineLabel.value = ''
+  deadlineDateStr.value = ''
+}
+
+function getDeadlineDaysRemaining(deadline: Deadline): number {
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  const target = new Date(deadline.date)
+  target.setHours(0, 0, 0, 0)
+  return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function getDeadlineClass(deadline: Deadline): string {
+  const days = getDeadlineDaysRemaining(deadline)
+  if (days < 0) return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+  if (days <= 3) return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
+  return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+}
+
+function getDeadlineIcon(deadline: Deadline): string {
+  const days = getDeadlineDaysRemaining(deadline)
+  if (days < 0) return 'ph-alarm text-red-600 dark:text-red-400'
+  if (days <= 3) return 'ph-warning text-orange-600 dark:text-orange-400'
+  return 'ph-calendar text-gray-500'
+}
+
+function getDeadlineDaysLabel(deadline: Deadline): string {
+  const days = getDeadlineDaysRemaining(deadline)
+  if (days < 0) return `${Math.abs(days)}j en retard`
+  if (days === 0) return "Aujourd'hui"
+  if (days === 1) return 'Demain'
+  return `Dans ${days}j`
+}
+
+function formatDeadlineDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+}
+
+async function saveDeadline(year: YearLevel) {
+  if (!deadlineLabel.value || !deadlineDateStr.value) return
+  const deadline: Deadline = {
+    date: new Date(deadlineDateStr.value).getTime(),
+    label: deadlineLabel.value
+  }
+  await competencesStore.setDeadline(props.outcome.id, year, deadline)
+  deadlinePopoverYear.value = null
+}
+
+async function removeDeadline(outcomeId: string, year: YearLevel) {
+  await competencesStore.removeDeadline(outcomeId, year)
+}
 
 const isPinned = computed(() => authStore.isPinned(props.outcome.id))
 const isLocked = computed(() => competencesStore.isLocked(props.outcome.id))

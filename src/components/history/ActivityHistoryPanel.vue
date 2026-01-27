@@ -42,38 +42,129 @@
       </div>
 
       <!-- Activity Feed Tab -->
-      <div v-if="activeTab === 'activity'" class="flex-1 overflow-y-auto p-4">
-        <div class="space-y-3">
-          <div
-            v-for="activity in activities"
-            :key="activity.id"
-            class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition cursor-pointer"
-          >
-            <UserAvatar :email="activity.user" :size="32" />
-            <div class="flex-1 min-w-0">
-              <p class="text-sm text-gray-900 dark:text-white">
-                <span class="font-medium">{{ activity.user.split('@')[0] }}</span>
-                <span class="text-gray-600 dark:text-gray-400"> {{ activity.action }}</span>
-              </p>
-              <p class="text-xs text-gray-600 dark:text-gray-400 truncate">{{ activity.detail }}</p>
-              <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">{{ formatDate(activity.date) }}</p>
+      <div v-if="activeTab === 'activity'" class="flex-1 overflow-y-auto flex flex-col">
+        <!-- Filters -->
+        <div class="p-3 border-b border-gray-200 dark:border-gray-700 space-y-2">
+          <div class="flex gap-2">
+            <div class="relative flex-1">
+              <i class="ph ph-magnifying-glass absolute left-2.5 top-2.5 text-gray-400 text-sm"></i>
+              <input
+                v-model="activitySearch"
+                type="text"
+                placeholder="Rechercher..."
+                class="w-full pl-8 pr-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
             </div>
-            <i class="ph ph-dot text-2xl" :class="activityColor(activity.action)"></i>
+            <button
+              @click="showActivityFilters = !showActivityFilters"
+              class="px-2.5 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition"
+              :class="hasActiveFilters ? 'text-indigo-600 dark:text-indigo-400 border-indigo-300 dark:border-indigo-600' : 'text-gray-600 dark:text-gray-400'"
+            >
+              <i class="ph ph-funnel"></i>
+            </button>
           </div>
-
-          <div v-if="activities.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
-            <i class="ph ph-activity text-4xl mb-2"></i>
-            <p>Aucune activité récente</p>
+          <div v-if="showActivityFilters" class="space-y-2">
+            <select
+              v-model="activityUserFilter"
+              class="w-full px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value="">Tous les utilisateurs</option>
+              <option v-for="user in uniqueUsers" :key="user" :value="user">{{ user.split('@')[0] }}</option>
+            </select>
+            <select
+              v-model="activityActionFilter"
+              class="w-full px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value="">Toutes les actions</option>
+              <option value="changé">Changement de statut</option>
+              <option value="ajouté">Ajout</option>
+              <option value="supprim">Suppression</option>
+              <option value="modifi">Modification</option>
+            </select>
+            <div class="flex gap-2">
+              <input
+                v-model="activityDateFrom"
+                type="date"
+                class="flex-1 px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+              <input
+                v-model="activityDateTo"
+                type="date"
+                class="flex-1 px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+            </div>
+            <button
+              v-if="hasActiveFilters"
+              @click="clearActivityFilters"
+              class="w-full py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+            >
+              Effacer les filtres
+            </button>
           </div>
         </div>
 
-        <button
-          v-if="activities.length >= limitCount"
-          @click="loadMore"
-          class="w-full mt-4 py-2 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition"
-        >
-          Charger plus
-        </button>
+        <!-- Summary Stats -->
+        <div v-if="filteredActivities.length > 0" class="px-3 py-2 border-b border-gray-200 dark:border-gray-700 flex gap-3 text-xs text-gray-500 dark:text-gray-400">
+          <span class="flex items-center gap-1"><i class="ph ph-list-bullets"></i> {{ filteredActivities.length }} résultats</span>
+          <span v-if="activityStatsSummary.changes" class="flex items-center gap-1 text-blue-500"><i class="ph ph-dot"></i> {{ activityStatsSummary.changes }} statuts</span>
+          <span v-if="activityStatsSummary.adds" class="flex items-center gap-1 text-green-500"><i class="ph ph-dot"></i> {{ activityStatsSummary.adds }} ajouts</span>
+        </div>
+
+        <!-- Timeline grouped by day -->
+        <div class="flex-1 overflow-y-auto p-4">
+          <div v-if="filteredActivities.length > 0" class="relative">
+            <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-600"></div>
+
+            <template v-for="(group, gIdx) in groupedActivities" :key="gIdx">
+              <!-- Day header -->
+              <div class="relative pl-10 pb-3">
+                <div class="absolute left-1.5 w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                  <i class="ph ph-calendar-blank text-indigo-600 dark:text-indigo-400 text-xs"></i>
+                </div>
+                <p class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide pt-0.5">
+                  {{ group.label }}
+                </p>
+              </div>
+
+              <!-- Events in day -->
+              <div
+                v-for="activity in group.items"
+                :key="activity.id"
+                class="relative pl-10 pb-4 last:pb-2 cursor-pointer"
+                @click="navigateToLO(activity.detail)"
+              >
+                <div
+                  class="absolute left-2.5 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800"
+                  :class="activityDotColor(activity.action)"
+                ></div>
+                <div class="p-2.5 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                  <div class="flex items-center gap-2">
+                    <UserAvatar :email="activity.user" :size="22" />
+                    <span class="text-xs font-medium text-gray-900 dark:text-white">{{ activity.user.split('@')[0] }}</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400 ml-auto">{{ formatTime(activity.date) }}</span>
+                  </div>
+                  <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    {{ activity.action }}
+                  </p>
+                  <p class="text-xs text-gray-500 dark:text-gray-500 truncate mt-0.5 font-mono">{{ activity.detail }}</p>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <div v-else class="text-center py-8 text-gray-500 dark:text-gray-400">
+            <i class="ph ph-activity text-4xl mb-2"></i>
+            <p>{{ hasActiveFilters || activitySearch ? 'Aucun résultat pour ces filtres' : 'Aucune activité récente' }}</p>
+          </div>
+
+          <button
+            v-if="activities.length >= limitCount"
+            @click="loadMore"
+            class="w-full mt-4 py-2 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition"
+          >
+            Charger plus
+          </button>
+        </div>
       </div>
 
       <!-- Audit Log Tab -->
@@ -359,6 +450,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 import { useCompetencesStore } from '@/stores/competences'
+import { useAuthStore } from '@/stores/auth'
 import { useAICache } from '@/composables/useAICache'
 import { useMarkdown } from '@/composables/useMarkdown'
 import { useToast } from '@/composables/useToast'
@@ -372,9 +464,10 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: [] }>()
 
 const competencesStore = useCompetencesStore()
+const authStore = useAuthStore()
 const { historyEntries: aiHistory, loadHistory, deleteEntry } = useAICache()
 const markdown = useMarkdown()
 const { success } = useToast()
@@ -385,6 +478,122 @@ const limitCount = ref(20)
 const auditFilter = ref('')
 const selectedAIEntry = ref<AIHistoryEntry | null>(null)
 const selectedLO = ref('')
+
+// --- Activity filters ---
+const activitySearch = ref('')
+const activityUserFilter = ref('')
+const activityActionFilter = ref('')
+const activityDateFrom = ref('')
+const activityDateTo = ref('')
+const showActivityFilters = ref(false)
+
+const uniqueUsers = computed(() => {
+  const users = new Set(activities.value.map(a => a.user))
+  return [...users].sort()
+})
+
+const hasActiveFilters = computed(() => {
+  return !!(activityUserFilter.value || activityActionFilter.value || activityDateFrom.value || activityDateTo.value)
+})
+
+const clearActivityFilters = () => {
+  activityUserFilter.value = ''
+  activityActionFilter.value = ''
+  activityDateFrom.value = ''
+  activityDateTo.value = ''
+  activitySearch.value = ''
+}
+
+const filteredActivities = computed(() => {
+  let list = activities.value
+
+  if (activitySearch.value) {
+    const q = activitySearch.value.toLowerCase()
+    list = list.filter(a =>
+      a.action.toLowerCase().includes(q) ||
+      a.detail.toLowerCase().includes(q) ||
+      a.user.toLowerCase().includes(q)
+    )
+  }
+
+  if (activityUserFilter.value) {
+    list = list.filter(a => a.user === activityUserFilter.value)
+  }
+
+  if (activityActionFilter.value) {
+    list = list.filter(a => a.action.includes(activityActionFilter.value))
+  }
+
+  if (activityDateFrom.value) {
+    const from = new Date(activityDateFrom.value).getTime()
+    list = list.filter(a => a.date >= from)
+  }
+
+  if (activityDateTo.value) {
+    const to = new Date(activityDateTo.value).getTime() + 86400000 // end of day
+    list = list.filter(a => a.date <= to)
+  }
+
+  return list
+})
+
+const activityStatsSummary = computed(() => {
+  const items = filteredActivities.value
+  return {
+    changes: items.filter(a => a.action.includes('changé')).length,
+    adds: items.filter(a => a.action.includes('ajouté') || a.action.includes('créé')).length
+  }
+})
+
+interface ActivityGroup {
+  label: string
+  items: ActivityFeed[]
+}
+
+const groupedActivities = computed((): ActivityGroup[] => {
+  const groups: Map<string, ActivityFeed[]> = new Map()
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  const todayStr = today.toDateString()
+  const yesterdayStr = yesterday.toDateString()
+
+  for (const a of filteredActivities.value) {
+    const d = new Date(a.date)
+    const dateStr = d.toDateString()
+    let label: string
+    if (dateStr === todayStr) label = "Aujourd'hui"
+    else if (dateStr === yesterdayStr) label = 'Hier'
+    else label = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+
+    if (!groups.has(label)) groups.set(label, [])
+    groups.get(label)!.push(a)
+  }
+
+  return [...groups.entries()].map(([label, items]) => ({ label, items }))
+})
+
+const formatTime = (timestamp: number) => {
+  return new Date(timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+}
+
+const activityDotColor = (action: string) => {
+  if (action.includes('ajout') || action.includes('créé')) return 'bg-green-500'
+  if (action.includes('supprim') || action.includes('retiré')) return 'bg-red-500'
+  if (action.includes('changé')) return 'bg-blue-500'
+  if (action.includes('modifi')) return 'bg-orange-500'
+  return 'bg-gray-400'
+}
+
+const navigateToLO = (detail: string) => {
+  // Extract outcomeId from detail string (e.g., "1.1.1 (L1) : draft")
+  const match = detail.match(/^([\d.]+)/)
+  if (match) {
+    selectedLO.value = match[1]
+    activeTab.value = 'lo'
+  }
+}
 
 const tabs = [
   { id: 'activity' as const, label: 'Activité', icon: 'ph ph-activity' },

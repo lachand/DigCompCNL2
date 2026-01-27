@@ -26,7 +26,8 @@ import type {
   Comment,
   AuditLog,
   Lock,
-  Snapshot
+  Snapshot,
+  Deadline
 } from '@/types'
 import { useAuthStore } from './auth'
 import { useNotificationsStore } from './notifications'
@@ -251,6 +252,21 @@ export const useCompetencesStore = defineStore('competences', () => {
     success('Ressource ajoutée')
   }
 
+  const reorderResources = async (
+    outcomeId: string,
+    year: YearLevel,
+    fromIndex: number,
+    toIndex: number
+  ) => {
+    const outcome = getOutcomeById(outcomeId)
+    if (!outcome || !outcome.mappings[year].resources) return
+
+    const resources = outcome.mappings[year].resources!
+    const [moved] = resources.splice(fromIndex, 1)
+    resources.splice(toIndex, 0, moved)
+    await saveData()
+  }
+
   const removeResource = async (
     outcomeId: string,
     year: YearLevel,
@@ -426,6 +442,80 @@ export const useCompetencesStore = defineStore('competences', () => {
     success('Snapshot restauré')
   }
 
+  const setDeadline = async (
+    outcomeId: string,
+    year: YearLevel,
+    deadline: Deadline
+  ) => {
+    const authStore = useAuthStore()
+    const outcome = getOutcomeById(outcomeId)
+    if (!outcome) return
+
+    outcome.mappings[year].deadline = deadline
+    await saveData()
+
+    await addDoc(collection(db, 'audit_logs'), {
+      timestamp: Date.now(),
+      user: authStore.currentUser?.email || '',
+      action: 'deadline_set',
+      targetId: outcomeId,
+      desc: `Deadline ${year} : ${deadline.label} (${new Date(deadline.date).toLocaleDateString('fr-FR')})`,
+      year,
+      newVal: deadline.label
+    })
+
+    // Activity feed
+    await addDoc(collection(db, 'activity_feed'), {
+      user: authStore.currentUser?.email || '',
+      action: 'a défini une deadline',
+      detail: `${outcomeId} (${year}) : ${deadline.label}`,
+      date: Date.now()
+    })
+
+    // Notify assignees
+    const notificationsStore = useNotificationsStore()
+    const assignees = outcome.assignees || []
+    for (const assignee of assignees) {
+      if (assignee !== authStore.currentUser?.email) {
+        await notificationsStore.notifyCalendarEvent(
+          outcomeId,
+          year,
+          deadline.label,
+          new Date(deadline.date).toISOString().split('T')[0],
+          assignee,
+          authStore.currentUser?.email || ''
+        )
+      }
+    }
+
+    success('Deadline définie')
+  }
+
+  const removeDeadline = async (
+    outcomeId: string,
+    year: YearLevel
+  ) => {
+    const authStore = useAuthStore()
+    const outcome = getOutcomeById(outcomeId)
+    if (!outcome || !outcome.mappings[year].deadline) return
+
+    const oldLabel = outcome.mappings[year].deadline!.label
+    delete outcome.mappings[year].deadline
+    await saveData()
+
+    await addDoc(collection(db, 'audit_logs'), {
+      timestamp: Date.now(),
+      user: authStore.currentUser?.email || '',
+      action: 'deadline_remove',
+      targetId: outcomeId,
+      desc: `Deadline ${year} supprimée : ${oldLabel}`,
+      year,
+      oldVal: oldLabel
+    })
+
+    success('Deadline supprimée')
+  }
+
   const cleanup = () => {
     if (dataUnsubscribe) dataUnsubscribe()
     if (locksUnsubscribe) locksUnsubscribe()
@@ -448,6 +538,7 @@ export const useCompetencesStore = defineStore('competences', () => {
     updateStatus,
     updateCourseLink,
     addResource,
+    reorderResources,
     removeResource,
     updateDescription,
     toggleAssignee,
@@ -458,6 +549,8 @@ export const useCompetencesStore = defineStore('competences', () => {
     releaseLock,
     createSnapshot,
     restoreSnapshot,
+    setDeadline,
+    removeDeadline,
     cleanup
   }
 })
