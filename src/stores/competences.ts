@@ -333,7 +333,7 @@ export const useCompetencesStore = defineStore('competences', () => {
       text,
       author: authStore.currentUser?.email || '',
       date: Date.now(),
-      year
+      ...(year !== undefined && { year })
     }
 
     outcome.comments.push(comment)
