@@ -126,7 +126,7 @@
           <div>
             <span class="font-mono text-sm font-medium text-indigo-600 dark:text-indigo-400">{{ selectedOutcome.id }}</span>
             <span class="ml-2 px-2 py-0.5 text-xs rounded" :class="levelClass(selectedOutcome.level)">
-              {{ selectedOutcome.level }}
+              {{ translateLevel(selectedOutcome.level) }}
             </span>
           </div>
           <button
@@ -174,6 +174,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCompetencesStore } from '@/stores/competences'
 import { useToast } from '@/composables/useToast'
+import { translateLevel } from '@/utils/helpers'
 import { OFFICIAL_TITLES } from '@/types'
 import type { LearningOutcome, Domain } from '@/types'
 

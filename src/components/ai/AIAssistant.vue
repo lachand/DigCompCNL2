@@ -62,7 +62,7 @@
           <h4 class="font-semibold text-gray-900 dark:text-white mb-1">{{ outcome.id }}</h4>
           <p class="text-sm text-gray-700 dark:text-gray-300">{{ outcome.description }}</p>
           <span class="inline-block mt-2 px-2 py-1 text-xs rounded" :class="levelClass">
-            {{ outcome.level }}
+            {{ translateLevel(outcome.level) }}
           </span>
         </div>
 
@@ -196,7 +196,7 @@ import { useGemini } from '@/composables/useGemini'
 import { useAICache } from '@/composables/useAICache'
 import { useMarkdown } from '@/composables/useMarkdown'
 import { useToast } from '@/composables/useToast'
-import { copyToClipboard as copyText, downloadFile, formatDate } from '@/utils/helpers'
+import { copyToClipboard as copyText, downloadFile, formatDate, translateLevel } from '@/utils/helpers'
 import Modal from '@/components/common/Modal.vue'
 import GiftExportModal from '@/components/ai/GiftExportModal.vue'
 import { AI_MODELS } from '@/types'

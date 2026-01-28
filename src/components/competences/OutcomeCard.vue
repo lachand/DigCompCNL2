@@ -36,7 +36,7 @@
             />
             <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ outcome.id }}</h3>
             <span class="px-2 py-1 text-xs font-medium rounded" :class="levelClass">
-              {{ outcome.level }}
+              {{ translateLevel(outcome.level) }}
             </span>
             <i
               v-if="isPinned"
@@ -278,6 +278,7 @@ import AIAssistant from '@/components/ai/AIAssistant.vue'
 import ResourceHunter from './ResourceHunter.vue'
 import UserAvatar from '@/components/auth/UserAvatar.vue'
 import { useReviewRequests } from '@/composables/useReviewRequests'
+import { translateLevel } from '@/utils/helpers'
 import type { LearningOutcome, YearLevel, Deadline } from '@/types'
 
 interface Props {

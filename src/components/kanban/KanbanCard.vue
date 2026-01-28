@@ -9,7 +9,7 @@
       <div>
         <h4 class="font-semibold text-gray-900 dark:text-white text-sm">{{ outcome.id }}</h4>
         <span class="text-xs px-2 py-0.5 rounded" :class="levelClass">
-          {{ outcome.level }}
+          {{ translateLevel(outcome.level) }}
         </span>
       </div>
       <button
@@ -87,7 +87,7 @@
 import { computed } from 'vue'
 import UserAvatar from '@/components/auth/UserAvatar.vue'
 import { useAuthStore } from '@/stores/auth'
-import { getUserColor } from '@/utils/helpers'
+import { getUserColor, translateLevel } from '@/utils/helpers'
 import type { LearningOutcome, YearLevel } from '@/types'
 
 interface Props {

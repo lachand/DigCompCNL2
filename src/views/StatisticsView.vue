@@ -174,7 +174,7 @@
           :class="level.bgClass"
         >
           <p class="text-3xl font-bold" :class="level.textClass">{{ level.count }}</p>
-          <p class="text-sm" :class="level.textClass">{{ level.name }}</p>
+          <p class="text-sm" :class="level.textClass">{{ translateLevel(level.name) }}</p>
           <p class="text-xs opacity-75" :class="level.textClass">{{ level.percentage }}%</p>
         </div>
       </div>
@@ -185,6 +185,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useCompetencesStore } from '@/stores/competences'
+import { translateLevel } from '@/utils/helpers'
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 import type { YearLevel, AuditLog } from '@/types'
@@ -341,7 +342,7 @@ const levelDistribution = computed(() => {
       textClass: 'text-orange-700 dark:text-orange-400'
     },
     {
-      name: 'Highly adv.',
+      name: 'Highly advanced',
       count: counts['Highly advanced'],
       percentage: Math.round((counts['Highly advanced'] / total) * 100),
       bgClass: 'bg-red-100 dark:bg-red-900/30',

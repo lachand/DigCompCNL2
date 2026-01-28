@@ -27,7 +27,7 @@
 
     <!-- Level badge -->
     <span class="inline-block px-1.5 py-0.5 text-xs rounded" :class="levelClass">
-      {{ outcome.level }}
+      {{ translateLevel(outcome.level) }}
     </span>
 
     <!-- Year Status -->
@@ -69,6 +69,7 @@
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCompetencesStore } from '@/stores/competences'
+import { translateLevel } from '@/utils/helpers'
 import type { LearningOutcome, YearLevel } from '@/types'
 
 interface Props {

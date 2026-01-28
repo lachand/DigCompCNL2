@@ -37,7 +37,7 @@
         </div>
         <div class="space-y-2">
           <div v-for="level in levelStats" :key="level.name" class="flex items-center justify-between text-sm">
-            <span class="text-gray-600 dark:text-gray-400">{{ level.name }}</span>
+            <span class="text-gray-600 dark:text-gray-400">{{ translateLevel(level.name) }}</span>
             <span class="font-medium text-gray-900 dark:text-white">{{ level.count }}</span>
           </div>
         </div>
@@ -151,6 +151,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useCompetencesStore } from '@/stores/competences'
+import { translateLevel } from '@/utils/helpers'
 import type { YearLevel, StatusType, LevelType } from '@/types'
 
 const competencesStore = useCompetencesStore()

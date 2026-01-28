@@ -77,7 +77,7 @@
                 </p>
                 <div class="flex items-center gap-2 mt-1">
                   <span class="text-xs px-1.5 py-0.5 rounded" :class="getLevelClass(outcome.level)">
-                    {{ outcome.level }}
+                    {{ translateLevel(outcome.level) }}
                   </span>
                 </div>
               </td>
@@ -213,6 +213,7 @@
 import { ref, computed } from 'vue'
 import { useCompetencesStore } from '@/stores/competences'
 import { useToast } from '@/composables/useToast'
+import { translateLevel } from '@/utils/helpers'
 import Modal from '@/components/common/Modal.vue'
 import ComparisonCell from '@/components/comparison/ComparisonCell.vue'
 import type { LearningOutcome, YearLevel, StatusType } from '@/types'

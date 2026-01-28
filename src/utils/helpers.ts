@@ -124,3 +124,13 @@ export function downloadFile(content: string, filename: string, mimeType: string
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
+// Level translation
+export function translateLevel(level: string): string {
+  const translations: Record<string, string> = {
+    'Basic': 'Basique',
+    'Intermediate': 'Intermédiaire',
+    'Advanced': 'Avancé',
+    'Highly advanced': 'Expert'
+  }
+  return translations[level] || level
+}

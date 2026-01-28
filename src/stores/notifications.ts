@@ -52,31 +52,45 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
   const loadNotifications = () => {
     const authStore = useAuthStore()
-    if (!authStore.currentUser?.email) return
+    
+    // Watch for when currentUser is available
+    const setupListener = () => {
+      if (!authStore.currentUser?.email) {
+        // Wait for auth to be ready
+        setTimeout(setupListener, 100)
+        return
+      }
 
-    try {
-      const q = query(
-        collection(db, 'notifications'),
-        where('targetUser', '==', authStore.currentUser.email),
-        orderBy('createdAt', 'desc'),
-        limit(100)
-      )
+      // Clean up previous listener
+      if (unsubscribe) {
+        unsubscribe()
+      }
 
-      unsubscribe = onSnapshot(q, (snapshot) => {
-        notifications.value = snapshot.docs.map(doc => {
-          const data = doc.data()
-          return {
-            id: doc.id,
-            ...data,
-            createdAt: typeof data.createdAt === 'number' ? data.createdAt : (data.createdAt?.toMillis?.() || Date.now())
-          } as Notification
+      try {
+        const q = query(
+          collection(db, 'notifications'),
+          where('targetUser', '==', authStore.currentUser.email),
+          limit(100)
+        )
+
+        unsubscribe = onSnapshot(q, (snapshot) => {
+          notifications.value = snapshot.docs.map(doc => {
+            const data = doc.data()
+            return {
+              id: doc.id,
+              ...data,
+              createdAt: typeof data.createdAt === 'number' ? data.createdAt : (data.createdAt?.toMillis?.() || Date.now())
+            } as Notification
+          })
+        }, (err) => {
+          console.error('Error loading notifications:', err)
         })
-      }, (err) => {
-        console.error('Error loading notifications:', err)
-      })
-    } catch (err) {
-      console.error('Error setting up notifications listener:', err)
+      } catch (err) {
+        console.error('Error setting up notifications listener:', err)
+      }
     }
+
+    setupListener()
   }
 
   const createNotification = async (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
