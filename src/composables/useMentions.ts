@@ -1,8 +1,17 @@
-import { ref } from 'vue'
+import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 export function useMentions() {
-  const allUsers = ref<Array<{ email: string; name: string }>>([])
+  const authStore = useAuthStore()
+  
+  // Get team members from auth store
+  const teamMembers = computed(() => {
+    return (authStore.users || []).map(user => ({
+      email: user.email,
+      name: user.email.split('@')[0],
+      uid: user.uid
+    }))
+  })
 
   // Parse mentions in text (@user)
   const extractMentions = (text: string): string[] => {
@@ -37,7 +46,7 @@ export function useMentions() {
   const getAutocompleteSuggestions = (partial: string) => {
     if (!partial || partial.length < 1) return []
 
-    return allUsers.value.filter(user =>
+    return teamMembers.value.filter(user =>
       user.email.toLowerCase().includes(partial.toLowerCase()) ||
       user.name.toLowerCase().includes(partial.toLowerCase())
     ).slice(0, 5)
@@ -46,10 +55,9 @@ export function useMentions() {
   // Find mentions in text that should trigger notifications
   const findMentionedUsers = (text: string): string[] => {
     const mentions = extractMentions(text)
-    const authStore = useAuthStore()
     const currentUserEmail = authStore.currentUser?.email || ''
 
-    return allUsers.value
+    return teamMembers.value
       .filter(user =>
         mentions.some(m => user.email.includes(m)) &&
         user.email !== currentUserEmail
@@ -59,12 +67,12 @@ export function useMentions() {
 
   // Format mention to standard form
   const formatMention = (userEmail: string): string => {
-    const user = allUsers.value.find(u => u.email === userEmail)
+    const user = teamMembers.value.find(u => u.email === userEmail)
     return `@${user?.email.split('@')[0] || userEmail}`
   }
 
   return {
-    allUsers,
+    teamMembers,
     extractMentions,
     getMentionsForDisplay,
     highlightMentions,

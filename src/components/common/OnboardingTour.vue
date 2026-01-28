@@ -65,73 +65,106 @@
       <!-- Dark overlay with spotlight hole -->
       <div class="absolute inset-0 bg-black/40 transition-all duration-300" @click="tour.skipTour()"></div>
 
-      <!-- Spotlight cutout -->
+      <!-- Spotlight cutout with glow effect -->
+      <svg class="absolute inset-0 pointer-events-none z-[91]">
+        <defs>
+          <mask id="tour-mask">
+            <rect width="100%" height="100%" fill="white"/>
+            <rect
+              v-if="spotlightRect"
+              :x="spotlightRect.left - PADDING"
+              :y="spotlightRect.top - PADDING"
+              :width="spotlightRect.width + PADDING * 2"
+              :height="spotlightRect.height + PADDING * 2"
+              rx="8"
+              fill="black"
+            />
+          </mask>
+        </defs>
+        <rect width="100%" height="100%" fill="black" mask="url(#tour-mask)" opacity="0.4"/>
+      </svg>
+
+      <!-- Spotlight ring -->
       <div
         v-if="spotlightRect"
-        class="absolute bg-transparent rounded-lg ring-4 ring-indigo-400 ring-offset-4 ring-offset-transparent transition-all duration-300 pointer-events-none z-[91]"
+        class="absolute bg-transparent rounded-lg ring-4 ring-indigo-400 ring-offset-4 ring-offset-transparent transition-all duration-300 pointer-events-none z-[91] shadow-lg"
         :style="spotlightStyle"
       ></div>
 
       <!-- Tooltip -->
       <div
         v-if="tour.currentStep.value"
-        class="absolute z-[92] w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 transition-all duration-300"
+        class="absolute z-[92] w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 transition-all duration-300 pointer-events-auto"
         :style="tooltipStyle"
       >
         <!-- Arrow -->
         <div class="absolute w-3 h-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rotate-45" :style="arrowStyle"></div>
 
-        <div class="p-4 relative">
-          <!-- Step counter -->
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-medium text-indigo-600 dark:text-indigo-400">
-              Etape {{ tour.currentStepIndex.value + 1 }} / {{ tour.totalSteps.value }}
+        <div class="p-5 relative">
+          <!-- Step counter + Close button -->
+          <div class="flex items-center justify-between mb-3">
+            <span class="inline-block px-2 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-xs font-bold text-indigo-600 dark:text-indigo-400 rounded">
+              {{ tour.currentStepIndex.value + 1 }}/{{ tour.totalSteps.value }}
             </span>
             <button
               @click="tour.skipTour()"
-              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
+              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+              title="Fermer la visite"
             >
               <i class="ph ph-x text-sm"></i>
             </button>
           </div>
 
-          <!-- Content -->
-          <h3 class="font-bold text-gray-900 dark:text-white mb-1">{{ tour.currentStep.value.title }}</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{{ tour.currentStep.value.content }}</p>
+          <!-- Title + Content -->
+          <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-2">{{ tour.currentStep.value.title }}</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">{{ tour.currentStep.value.content }}</p>
 
-          <!-- Progress dots -->
-          <div class="flex items-center justify-center gap-1.5 mt-4 mb-3">
+          <!-- Progress dots - clickable to jump to steps -->
+          <div class="flex items-center justify-center gap-2 mb-4">
             <button
-              v-for="(_, index) in tour.totalSteps.value"
+              v-for="(_, index) in Array(tour.totalSteps.value)"
               :key="index"
               @click="tour.goToStep(index)"
-              class="w-2 h-2 rounded-full transition-all"
+              class="transition-all rounded-full hover:scale-125"
+              :title="`Aller à l'étape ${index + 1}`"
               :class="index === tour.currentStepIndex.value
-                ? 'bg-indigo-600 dark:bg-indigo-400 w-4'
+                ? 'w-3 h-3 bg-indigo-600 dark:bg-indigo-400'
                 : index < tour.currentStepIndex.value
-                  ? 'bg-indigo-300 dark:bg-indigo-600'
-                  : 'bg-gray-300 dark:bg-gray-600'"
+                  ? 'w-2 h-2 bg-indigo-300 dark:bg-indigo-600'
+                  : 'w-2 h-2 bg-gray-300 dark:bg-gray-600'"
             ></button>
           </div>
 
-          <!-- Navigation -->
+          <!-- Navigation buttons -->
           <div class="flex gap-2">
             <button
               v-if="!tour.isFirstStep.value"
               @click="tour.prevStep()"
-              class="flex-1 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+              class="flex-1 py-2 px-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition font-medium flex items-center justify-center gap-2"
+              title="Étape précédente (← ou Shift+Tab)"
             >
-              <i class="ph ph-arrow-left mr-1"></i>
-              Precedent
+              <i class="ph ph-arrow-left"></i>
+              Précédent
             </button>
             <button
               @click="tour.nextStep()"
-              class="flex-1 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition font-medium"
+              class="flex-1 py-2 px-3 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition font-medium flex items-center justify-center gap-2"
+              :title="tour.isLastStep.value ? 'Terminer la visite (Entrée)' : 'Étape suivante (→)'"
             >
               {{ tour.isLastStep.value ? 'Terminer' : 'Suivant' }}
-              <i v-if="!tour.isLastStep.value" class="ph ph-arrow-right ml-1"></i>
-              <i v-else class="ph ph-check ml-1"></i>
+              <i :class="tour.isLastStep.value ? 'ph ph-check' : 'ph ph-arrow-right'"></i>
             </button>
+          </div>
+
+          <!-- Keyboard hints -->
+          <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+            <p class="text-xs text-gray-400 dark:text-gray-500 text-center">
+              <kbd class="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs">→</kbd>
+              <kbd class="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs">←</kbd>
+              Navigation · 
+              <kbd class="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs">Esc</kbd>
+              Fermer
+            </p>
           </div>
         </div>
       </div>
@@ -166,21 +199,37 @@ const skipAll = () => {
   tour.skipTour()
 }
 
+// Retry counter for element visibility
+let retryCount = 0
+const MAX_RETRIES = 5
+
 // Track target element position
 const updateSpotlight = async () => {
   await nextTick()
   const step = tour.currentStep.value
   if (!step) {
     spotlightRect.value = null
+    retryCount = 0
     return
   }
 
-  const el = document.querySelector(step.target)
+  let el = document.querySelector(step.target)
+  
+  // If element not found, retry a few times (for async-rendered elements)
+  if (!el && retryCount < MAX_RETRIES) {
+    retryCount++
+    setTimeout(() => updateSpotlight(), 300)
+    return
+  }
+
+  retryCount = 0
+
   if (el) {
     spotlightRect.value = el.getBoundingClientRect()
     // Scroll element into view if needed
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   } else {
+    console.warn(`Tour step target not found: ${step.target}`)
     spotlightRect.value = null
   }
 }
@@ -196,6 +245,36 @@ const onResize = () => {
 }
 onMounted(() => window.addEventListener('resize', onResize))
 onUnmounted(() => window.removeEventListener('resize', onResize))
+
+// Keyboard navigation
+const onKeydown = (e: KeyboardEvent) => {
+  if (!tour.tourActive.value) return
+  
+  switch (e.key) {
+    case 'ArrowRight':
+    case 'Enter':
+      e.preventDefault()
+      tour.nextStep()
+      break
+    case 'ArrowLeft':
+      e.preventDefault()
+      if (!tour.isFirstStep.value) tour.prevStep()
+      break
+    case 'Escape':
+      e.preventDefault()
+      tour.skipTour()
+      break
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown)
+  window.addEventListener('resize', onResize)
+})
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('resize', onResize)
+})
 
 const PADDING = 8
 
@@ -263,6 +342,14 @@ const arrowStyle = computed(() => {
       return { right: '-7px', top: '24px', borderBottom: 'none', borderLeft: 'none' }
     default:
       return { display: 'none' }
+  }
+})
+
+// Rewatch step changes to update spotlight
+watch(() => tour.currentStepIndex.value, updateSpotlight)
+watch(() => tour.tourActive.value, (active) => {
+  if (active) {
+    setTimeout(updateSpotlight, 100)
   }
 })
 </script>

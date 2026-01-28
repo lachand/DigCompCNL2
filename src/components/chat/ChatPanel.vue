@@ -83,18 +83,12 @@
           <i class="ph ph-paperclip text-xl"></i>
         </button>
 
-        <!-- Textarea -->
-        <div class="flex-1 relative">
-          <textarea
-            v-model="messageText"
-            @input="handleTyping"
-            @keydown.enter.exact.prevent="sendMessage"
-            placeholder="Votre message..."
-            rows="1"
-            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-            style="max-height: 120px"
-          ></textarea>
-        </div>
+        <!-- Textarea with @mentions support -->
+        <MentionTextarea
+          :model-value="messageText"
+          @update:model-value="messageText = $event"
+          @mentions-detected="detectedMentions = $event"
+        />
 
         <!-- Send Button -->
         <button
@@ -107,7 +101,7 @@
       </form>
 
       <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
-        Entrée pour envoyer • Shift+Entrée pour nouvelle ligne
+        Entrée pour envoyer • Shift+Entrée pour nouvelle ligne • @mention pour notifier
       </p>
     </div>
 
@@ -152,10 +146,12 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useToast } from '@/composables/useToast'
+import { useMentions } from '@/composables/useMentions'
 import { fileToBase64 } from '@/utils/helpers'
 import UserAvatar from '@/components/auth/UserAvatar.vue'
 import MessageBubble from './MessageBubble.vue'
 import TypingIndicator from './TypingIndicator.vue'
+import MentionTextarea from './MentionTextarea.vue'
 import type { ChatMessage } from '@/types'
 
 defineEmits<{
@@ -165,8 +161,10 @@ defineEmits<{
 const authStore = useAuthStore()
 const chatStore = useChatStore()
 const { success, error: showError } = useToast()
+const { findMentionedUsers } = useMentions()
 
 const messageText = ref('')
+const detectedMentions = ref<string[]>([])
 const fileInput = ref<HTMLInputElement>()
 const messagesContainer = ref<HTMLDivElement>()
 const attachmentPreview = ref<File | null>(null)

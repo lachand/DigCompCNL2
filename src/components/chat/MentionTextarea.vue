@@ -3,21 +3,26 @@
     <!-- Mention Autocomplete Popup -->
     <div
       v-if="showMentionPopup && mentionSuggestions.length > 0"
-      class="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-40"
+      class="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-900/50 rounded-lg shadow-lg z-40 overflow-hidden"
     >
-      <div class="p-2 space-y-1">
+      <div class="bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 text-xs font-semibold text-indigo-700 dark:text-indigo-400 flex items-center gap-1">
+        <i class="ph ph-at"></i>
+        Suggestions
+      </div>
+      <div class="p-2 space-y-1 max-h-40 overflow-y-auto">
         <button
-          v-for="user in mentionSuggestions"
+          v-for="(user, idx) in mentionSuggestions"
           :key="user.email"
           @click="insertMention(user.email)"
-          class="w-full text-left px-3 py-2 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900 flex items-center gap-2 text-sm"
+          :class="idx === selectedIndex ? 'bg-indigo-100 dark:bg-indigo-900/50' : 'hover:bg-gray-100 dark:hover:bg-gray-700'"
+          class="w-full text-left px-3 py-2 rounded flex items-center gap-2 text-sm transition"
         >
-          <div class="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-white text-xs">
-            {{ user.email.charAt(0).toUpperCase() }}
+          <div class="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+            {{ user.name.charAt(0).toUpperCase() }}
           </div>
           <div class="flex-1 min-w-0">
-            <div class="font-medium truncate">{{ user.name || user.email }}</div>
-            <div class="text-xs text-gray-500 truncate">{{ user.email }}</div>
+            <div class="font-medium text-gray-900 dark:text-white truncate">{{ user.name }}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ user.email }}</div>
           </div>
         </button>
       </div>
@@ -28,17 +33,20 @@
       :value="modelValue"
       @input="handleInput"
       @keydown.enter.ctrl="$emit('send')"
+      @keydown.down.prevent="selectedIndex < mentionSuggestions.length - 1 && selectedIndex++"
+      @keydown.up.prevent="selectedIndex > 0 && selectedIndex--"
+      @keydown.enter.prevent="showMentionPopup && selectedIndex >= 0 ? insertMention(mentionSuggestions[selectedIndex].email) : $emit('send')"
       placeholder="Message avec @mentions... (Ctrl+Entrée pour envoyer)"
-      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
       rows="3"
     />
 
-    <!-- Mention preview -->
+    <!-- Mention preview with tags -->
     <div v-if="displayedMentions.length > 0" class="mt-2 flex flex-wrap gap-2">
-      <div v-for="mention in displayedMentions" :key="mention" class="inline-block px-2 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded text-sm">
+      <span v-for="mention in displayedMentions" :key="mention" class="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-full text-sm font-medium">
+        <i class="ph ph-at text-xs"></i>
         {{ mention }}
-        <i class="ph ph-at text-xs ml-0.5"></i>
-      </div>
+      </span>
     </div>
   </div>
 </template>
@@ -62,13 +70,22 @@ const { getAutocompleteSuggestions, getMentionsForDisplay, findMentionedUsers } 
 const showMentionPopup = ref(false)
 const currentMentionText = ref('')
 const mentionStartIndex = ref(-1)
+const selectedIndex = ref(-1)
 
 const mentionSuggestions = computed(() => {
-  return getAutocompleteSuggestions(currentMentionText.value)
+  const suggestions = getAutocompleteSuggestions(currentMentionText.value)
+  // Reset selected index when suggestions change
+  if (selectedIndex.value >= suggestions.length) {
+    selectedIndex.value = -1
+  }
+  return suggestions
 })
 
 const displayedMentions = computed(() => {
-  return getMentionsForDisplay(props.modelValue).map(m => m.full)
+  return getMentionsForDisplay(props.modelValue).map(m => {
+    const email = m.username
+    return email.split('@')[0] || email
+  })
 })
 
 const handleInput = (e: Event) => {
@@ -83,10 +100,11 @@ const handleInput = (e: Event) => {
     const afterAt = beforeCursor.substring(lastAtIndex + 1)
     
     // Check if we're typing a mention (no space after @)
-    if (!afterAt.includes(' ')) {
+    if (!afterAt.includes(' ') && !afterAt.includes('\n')) {
       showMentionPopup.value = true
       currentMentionText.value = afterAt
       mentionStartIndex.value = lastAtIndex
+      selectedIndex.value = -1
     } else {
       showMentionPopup.value = false
     }
@@ -115,5 +133,6 @@ const insertMention = (email: string) => {
   showMentionPopup.value = false
   currentMentionText.value = ''
   mentionStartIndex.value = -1
+  selectedIndex.value = -1
 }
 </script>

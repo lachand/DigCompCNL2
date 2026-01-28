@@ -24,12 +24,16 @@
         
         <!-- Edited indicator -->
         <div v-else-if="message.editedAt" class="space-y-1">
-          <p class="whitespace-pre-wrap break-words" v-html="linkify(message.text)"></p>
+          <p class="whitespace-pre-wrap break-words">
+            <component :is="'div'" v-html="highlightMentions(linkify(message.text))"></component>
+          </p>
           <p class="text-xs opacity-60">(édité)</p>
         </div>
 
-        <!-- Normal text -->
-        <p v-else class="whitespace-pre-wrap break-words" v-html="linkify(message.text)"></p>
+        <!-- Normal text with highlighted mentions -->
+        <p v-else class="whitespace-pre-wrap break-words">
+          <component :is="'div'" v-html="highlightMentions(linkify(message.text))"></component>
+        </p>
 
         <!-- Attachment -->
         <div v-if="message.attachment" class="mt-2 pt-2 border-t" :class="isOwn ? 'border-indigo-500' : 'border-gray-200 dark:border-gray-600'">
@@ -132,6 +136,7 @@ import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { formatDate, linkify } from '@/utils/helpers'
 import { useToast } from '@/composables/useToast'
+import { useMentions } from '@/composables/useMentions'
 import UserAvatar from '@/components/auth/UserAvatar.vue'
 import type { ChatMessage } from '@/types'
 
@@ -150,6 +155,7 @@ const emit = defineEmits<{
 
 const authStore = useAuthStore()
 const { success, error: showError } = useToast()
+const { highlightMentions: highlightMentionsUtil } = useMentions()
 
 const showReactionPicker = ref(false)
 const showDeleteConfirm = ref(false)
@@ -159,6 +165,15 @@ const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🎉', '🚀', '�
 const hasReactions = computed(() => {
   return props.message.reactions && Object.keys(props.message.reactions).length > 0
 })
+
+// Highlight mentions in the message
+const highlightMentions = (text: string): string => {
+  // Highlight @mentions with special styling
+  return text.replace(
+    /@(\w+)/g, 
+    '<span class="font-semibold px-1 py-0.5 rounded-md" style="background-color: rgba(99, 102, 241, 0.2); color: inherit;">@$1</span>'
+  )
+}
 
 const addReaction = (emoji: string) => {
   emit('addReaction', emoji)
