@@ -291,9 +291,9 @@ describe('useNotificationsStore', () => {
       expect(mockAddDoc).toHaveBeenCalled()
       const data = mockAddDoc.mock.calls[0][1]
       expect(data).toMatchObject({
-        type: 'calendar',
-        title: 'Evenement planifie',
-        link: '/calendar'
+        type: 'deadline',
+        title: 'Nouvelle deadline',
+        link: '/outcomes?lo=1.1.1'
       })
     })
   })
