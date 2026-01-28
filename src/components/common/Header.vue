@@ -37,6 +37,31 @@
         <i class="ph ph-export text-xl"></i>
       </button>
 
+      <!-- Theme Selector -->
+      <div class="relative group">
+        <button
+          class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
+          title="Changer de thème"
+        >
+          <i class="ph ph-palette text-xl"></i>
+        </button>
+        <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none group-hover:pointer-events-auto z-50">
+          <div class="p-2 space-y-1">
+            <button
+              v-for="themeOption in availableThemes"
+              :key="themeOption.name"
+              @click="theme.applyTheme(themeOption.name)"
+              class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2"
+              :class="{ 'bg-indigo-50 dark:bg-indigo-900': theme.currentTheme.value === themeOption.name }"
+            >
+              <div class="w-4 h-4 rounded" :style="{ backgroundColor: themeOption.primary }"></div>
+              <span>{{ themeOption.displayName }}</span>
+              <i v-if="theme.currentTheme.value === themeOption.name" class="ph ph-check ml-auto text-green-600"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Dark Mode Toggle -->
       <button
         @click="darkMode.toggle()"
@@ -296,6 +321,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useDarkMode } from '@/composables/useDarkMode'
+import { useTheme } from '@/composables/useTheme'
 import { useGemini } from '@/composables/useGemini'
 import { useToast } from '@/composables/useToast'
 import { formatDate, playSound } from '@/utils/helpers'
@@ -332,20 +358,22 @@ const authStore = useAuthStore()
 const chatStore = useChatStore()
 const notificationsStore = useNotificationsStore()
 const darkMode = useDarkMode()
+const theme = useTheme()
 const { validateApiKey } = useGemini()
-const { success, error: showError } = useToast()
+const { success } = useToast()
 
 // Debug notifications in development
-if (process.env.NODE_ENV === 'development') {
-  console.log('[DigComp Notifications] Store loaded. Unread count:', notificationsStore.unreadCount)
+if (typeof console !== 'undefined') {
+  console.log('[DigComp] App initialized successfully')
 }
 
 const { pendingCount: reviewPendingCount } = useReviewRequests()
 const { userStats: gamificationStats } = useGamification()
 
-const searchQuery = ref('')
 const showNotifications = ref(false)
 const showSettings = ref(false)
+
+const availableThemes = computed(() => theme.getThemeList())
 
 // API Key validation
 const apiKeyInput = ref(authStore.userData?.apiKey || '')
@@ -407,11 +435,6 @@ const pageTitle = computed(() => {
   return titles[route.path] || 'DigComp 3.0'
 })
 
-const handleSearch = () => {
-  // TODO: Implement search
-  console.log('Search:', searchQuery.value)
-}
-
 // Notification helpers
 const getNotificationIcon = (type: string) => {
   const icons: Record<string, string> = {
@@ -448,16 +471,5 @@ const handleNotificationClick = async (notif: any) => {
     // Navigate using router would be cleaner but this works for now
     window.location.href = notif.link
   }
-}
-
-// Simple click-away directive alternative
-const clickAway = (callback: () => void) => {
-  const listener = (e: MouseEvent) => {
-    if (!(e.target as HTMLElement).closest('.relative')) {
-      callback()
-      document.removeEventListener('click', listener)
-    }
-  }
-  setTimeout(() => document.addEventListener('click', listener), 0)
 }
 </script>

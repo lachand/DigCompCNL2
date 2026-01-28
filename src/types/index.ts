@@ -115,6 +115,26 @@ export interface ChatMessage {
   attachmentName?: string
   attachmentType?: string
   reactions?: Record<string, string[]>
+  editedAt?: number
+  editHistory?: Array<{ text: string; timestamp: number }>
+  deletedAt?: number | null
+  mentions?: string[] // Array of mentioned user emails
+}
+
+export type ThemeName = 'light' | 'dark' | 'nature' | 'cyberpunk' | 'vintage' | 'ocean' | 'sunset'
+
+export interface ThemeConfig {
+  name: ThemeName
+  displayName: string
+  isDark: boolean
+  colors: {
+    primary: string
+    secondary: string
+    accent: string
+    background: string
+    surface: string
+    text: string
+  }
 }
 
 export interface AuditLog {
@@ -178,13 +198,26 @@ export interface UserStats {
   currentStreak: number
   longestStreak: number
   lastActivityDate: string
+  level: number
+  nextLevelPoints: number
+  achievements: Achievement[]
   actionCounts: {
     statusChanges: number
     reviews: number
     validations: number
     comments: number
     resources: number
+    messagesPosted?: number
+    messagesEdited?: number
   }
+}
+
+export interface Achievement {
+  id: string
+  name: string
+  description: string
+  unlockedAt: number
+  rarity: 'common' | 'uncommon' | 'rare' | 'legendary'
 }
 
 export interface ExternalMember {
@@ -266,6 +299,100 @@ export const USER_COLORS = [
   '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
   '#8b5cf6', '#a855f7'
 ]
+
+export const THEMES: Record<ThemeName, ThemeConfig> = {
+  light: {
+    name: 'light',
+    displayName: 'Clair',
+    isDark: false,
+    colors: {
+      primary: '#4f46e5',
+      secondary: '#6b7280',
+      accent: '#ec4899',
+      background: '#ffffff',
+      surface: '#f9fafb',
+      text: '#111827'
+    }
+  },
+  dark: {
+    name: 'dark',
+    displayName: 'Sombre',
+    isDark: true,
+    colors: {
+      primary: '#6366f1',
+      secondary: '#9ca3af',
+      accent: '#f472b6',
+      background: '#111827',
+      surface: '#1f2937',
+      text: '#f3f4f6'
+    }
+  },
+  nature: {
+    name: 'nature',
+    displayName: 'Nature',
+    isDark: false,
+    colors: {
+      primary: '#10b981',
+      secondary: '#059669',
+      accent: '#f59e0b',
+      background: '#f0fdf4',
+      surface: '#ecfdf5',
+      text: '#065f46'
+    }
+  },
+  cyberpunk: {
+    name: 'cyberpunk',
+    displayName: 'Cyberpunk',
+    isDark: true,
+    colors: {
+      primary: '#d946ef',
+      secondary: '#06b6d4',
+      accent: '#00d9ff',
+      background: '#0a0e27',
+      surface: '#1a1f3a',
+      text: '#e0f2fe'
+    }
+  },
+  vintage: {
+    name: 'vintage',
+    displayName: 'Vintage',
+    isDark: false,
+    colors: {
+      primary: '#b45309',
+      secondary: '#92400e',
+      accent: '#dc2626',
+      background: '#fef3c7',
+      surface: '#fde68a',
+      text: '#78350f'
+    }
+  },
+  ocean: {
+    name: 'ocean',
+    displayName: 'Océan',
+    isDark: true,
+    colors: {
+      primary: '#0369a1',
+      secondary: '#0c4a6e',
+      accent: '#06b6d4',
+      background: '#0c1e2e',
+      surface: '#164e63',
+      text: '#cffafe'
+    }
+  },
+  sunset: {
+    name: 'sunset',
+    displayName: 'Coucher',
+    isDark: false,
+    colors: {
+      primary: '#f97316',
+      secondary: '#ea580c',
+      accent: '#d946ef',
+      background: '#fef2f2',
+      surface: '#fed7aa',
+      text: '#7c2d12'
+    }
+  }
+}
 
 // AI Models available
 export const AI_MODELS = [

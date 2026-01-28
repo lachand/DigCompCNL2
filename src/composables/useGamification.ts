@@ -109,6 +109,9 @@ export function useGamification() {
           userId: email,
           points: 0,
           badges: [],
+          level: 1,
+          nextLevelPoints: 100,
+          achievements: [],
           currentStreak: 0,
           longestStreak: 0,
           lastActivityDate: '',
@@ -117,7 +120,9 @@ export function useGamification() {
             reviews: 0,
             validations: 0,
             comments: 0,
-            resources: 0
+            resources: 0,
+            messagesPosted: 0,
+            messagesEdited: 0
           }
         }
         setDoc(statsRef, defaultStats)

@@ -118,6 +118,37 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  const editMessage = async (messageId: string, newText: string) => {
+    const authStore = useAuthStore()
+    const message = messages.value.find(m => m.id === messageId)
+    if (!message || message.sender !== authStore.currentUser?.email) return
+
+    // Store edit history
+    if (!message.editHistory) {
+      message.editHistory = [{ text: message.text, timestamp: message.timestamp }]
+    }
+    message.editHistory.push({ text: message.text, timestamp: Date.now() })
+
+    const messageRef = doc(db, 'messages', messageId)
+    await updateDoc(messageRef, {
+      text: newText,
+      editedAt: Date.now(),
+      editHistory: message.editHistory
+    })
+  }
+
+  const deleteMessage = async (messageId: string) => {
+    const authStore = useAuthStore()
+    const message = messages.value.find(m => m.id === messageId)
+    if (!message || message.sender !== authStore.currentUser?.email) return
+
+    const messageRef = doc(db, 'messages', messageId)
+    await updateDoc(messageRef, {
+      deletedAt: Date.now(),
+      text: '[Message supprimé]'
+    })
+  }
+
   const addReaction = async (messageId: string, emoji: string) => {
     const authStore = useAuthStore()
     const email = authStore.currentUser?.email
@@ -196,6 +227,8 @@ export const useChatStore = defineStore('chat', () => {
     sendMessage,
     setTyping,
     addReaction,
+    editMessage,
+    deleteMessage,
     markAsRead,
     setChatOpen,
     cleanup

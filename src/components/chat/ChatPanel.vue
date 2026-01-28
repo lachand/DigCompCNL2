@@ -34,6 +34,8 @@
         :message="message"
         :is-own="message.sender === authStore.currentUser?.email"
         @add-reaction="(emoji) => chatStore.addReaction(message.id!, emoji)"
+        @edit="openEditModal(message)"
+        @delete="deleteMessage(message.id!)"
       />
 
       <!-- Typing Indicator -->
@@ -108,6 +110,40 @@
         Entrée pour envoyer • Shift+Entrée pour nouvelle ligne
       </p>
     </div>
+
+    <!-- Edit Message Modal -->
+    <div
+      v-if="editingMessage"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      @click.self="editingMessage = null"
+    >
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Éditer le message</h3>
+        
+        <textarea
+          v-model="editText"
+          class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+          rows="3"
+          placeholder="Nouveau texte du message..."
+        />
+
+        <div class="mt-4 flex gap-2">
+          <button
+            @click="editingMessage = null"
+            class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Annuler
+          </button>
+          <button
+            @click="saveEdit"
+            :disabled="editText.trim().length === 0"
+            class="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-lg transition"
+          >
+            Sauvegarder
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -115,10 +151,12 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
+import { useToast } from '@/composables/useToast'
 import { fileToBase64 } from '@/utils/helpers'
 import UserAvatar from '@/components/auth/UserAvatar.vue'
 import MessageBubble from './MessageBubble.vue'
 import TypingIndicator from './TypingIndicator.vue'
+import type { ChatMessage } from '@/types'
 
 defineEmits<{
   close: []
@@ -126,12 +164,17 @@ defineEmits<{
 
 const authStore = useAuthStore()
 const chatStore = useChatStore()
+const { success, error: showError } = useToast()
 
 const messageText = ref('')
 const fileInput = ref<HTMLInputElement>()
 const messagesContainer = ref<HTMLDivElement>()
 const attachmentPreview = ref<File | null>(null)
 const attachmentData = ref<string>('')
+
+// Edit modal
+const editingMessage = ref<ChatMessage | null>(null)
+const editText = ref('')
 
 const onlineUsers = computed(() => authStore.users.filter(u => u.state === 'online'))
 const typingUsers = computed(() => authStore.users.filter(u => u.isTyping && u.uid !== authStore.currentUser?.uid))
@@ -187,6 +230,35 @@ const scrollToBottom = () => {
   })
 }
 
+
+const openEditModal = (message: ChatMessage) => {
+  editingMessage.value = message
+  editText.value = message.text
+}
+
+const saveEdit = async () => {
+  if (!editingMessage.value) return
+  
+  try {
+    await chatStore.editMessage(editingMessage.value.id!, editText.value)
+    success('Message édité avec succès')
+    editingMessage.value = null
+    editText.value = ''
+  } catch (err) {
+    showError('Erreur lors de l\'édition du message')
+  }
+}
+
+const deleteMessage = async (messageId: string) => {
+  if (!confirm('Êtes-vous sûr de vouloir supprimer ce message?')) return
+  
+  try {
+    await chatStore.deleteMessage(messageId)
+    success('Message supprimé')
+  } catch (err) {
+    showError('Erreur lors de la suppression du message')
+  }
+}
 const formatFileSize = (bytes: number) => {
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
