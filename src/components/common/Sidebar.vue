@@ -22,7 +22,7 @@
     </div>
 
     <!-- Navigation -->
-    <nav class="p-4 space-y-2 overflow-y-auto" style="max-height: calc(100vh - 200px)">
+    <nav class="p-4 space-y-2 overflow-y-auto overflow-x-hidden" style="max-height: calc(100vh - 200px)">
       <!-- Simple menu items -->
       <router-link
         v-for="item in simpleMenuItems"
@@ -64,22 +64,24 @@
 
             <!-- Domain list -->
             <div v-for="domain in domains" :key="domain.id" class="space-y-1">
-              <div class="flex items-center">
-                <router-link
-                  :to="`/outcomes/${encodeURIComponent(domain.id)}`"
-                  class="flex-1 flex items-center gap-2 px-3 py-2 rounded-l-lg text-sm transition"
-                  :class="isDomainActive(domain.id) ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'"
-                >
-                  <i class="ph ph-folder"></i>
-                  <span class="flex-1 text-left truncate">{{ getDomainDisplayName(domain) }}</span>
-                </router-link>
+              <!-- Domain item with clickable folder icon -->
+              <div class="flex items-center gap-1">
                 <button
                   @click.stop="toggleDomain(domain.id)"
-                  class="px-2 py-2 rounded-r-lg text-sm transition"
-                  :class="isDomainActive(domain.id) ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                  class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+                  :class="isDomainActive(domain.id) ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400'"
+                  :title="expandedDomains.includes(domain.id) ? 'Masquer les compétences' : 'Afficher les compétences'"
                 >
-                  <i class="ph text-xs" :class="expandedDomains.includes(domain.id) ? 'ph-caret-up' : 'ph-caret-down'"></i>
+                  <i class="ph ph-folder"></i>
                 </button>
+                <router-link
+                  :to="`/outcomes/${encodeURIComponent(domain.id)}`"
+                  class="flex-1 flex items-center gap-2 px-2 py-2 rounded-lg text-sm transition"
+                  :class="isDomainActive(domain.id) ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                  :title="domain.name || domain.title || domain.id"
+                >
+                  <span class="flex-1 text-left truncate">{{ getDomainDisplayName(domain) }}</span>
+                </router-link>
               </div>
 
               <!-- Competences submenu -->
@@ -91,6 +93,7 @@
                     :to="`/outcomes/${encodeURIComponent(domain.id)}/${encodeURIComponent(comp.id)}`"
                     class="flex items-center gap-2 px-2 py-1.5 rounded text-xs transition"
                     :class="decodeURIComponent(String(route.params.competence || '')) === comp.id ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                    :title="`${comp.id} - ${comp.name || comp.title || ''}`"
                   >
                     <span class="truncate">{{ getCompetenceDisplayName(comp) }}</span>
                     <span class="ml-auto text-xs opacity-60">{{ comp.outcomes?.length || 0 }}</span>
@@ -195,23 +198,38 @@ const isDomainActive = (domainId: string) => {
   return decodedDomain === domainId
 }
 
-// Helper functions for display names
-const getDomainDisplayName = (domain: any) => {
-  // Extract a readable name from domain id (e.g., "CompetenceArea/1" -> "Domaine 1")
-  const match = domain.id?.match(/\/(\d+)$/)
-  if (match) {
-    return `Domaine ${match[1]}`
+// Helper functions for display names with truncation
+const truncateText = (text: string, maxLength: number = 20): string => {
+  if (text.length > maxLength) {
+    return text.substring(0, maxLength) + '...'
   }
-  return domain.title || domain.id
+  return text
+}
+
+const getDomainDisplayName = (domain: any) => {
+  // Use the actual domain name from digCompData and truncate it
+  const name = domain.name || domain.title || domain.id
+  return truncateText(name, 18)
 }
 
 const getCompetenceDisplayName = (comp: any) => {
-  // Extract a readable name from competence id
+  // Extract a readable name from competence id and use name field
   const match = comp.id?.match(/(\d+\.\d+)/)
+  let displayName = ''
+  
   if (match) {
-    return `${match[1]} - ${comp.title || ''}`
+    displayName = `${match[1]}`
+  } else {
+    displayName = comp.id || ''
   }
-  return comp.title || comp.id
+  
+  // Add the name/title if available
+  const competenceName = comp.name || comp.title || ''
+  if (competenceName) {
+    displayName = `${displayName} ${competenceName}`
+  }
+  
+  return truncateText(displayName, 22)
 }
 
 const toggleLOMenu = () => {

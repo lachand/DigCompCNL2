@@ -279,6 +279,9 @@ const domainStats = computed(() => {
   }
 
   return competencesStore.digCompData.domains.map(domain => {
+    // Extract number from "CompetenceArea/1" format
+    const domainNumber = domain.id.split('/').pop() || domain.id
+    
     const outcomes = domain.competences.flatMap(c => c.outcomes)
     const total = outcomes.length
 
@@ -296,10 +299,10 @@ const domainStats = computed(() => {
     }
 
     return {
-      id: domain.id,
+      id: domainNumber,
       name: domain.name,
       total,
-      color: colors[domain.id] || '#6b7280',
+      color: colors[domainNumber] || '#6b7280',
       progress
     }
   })
