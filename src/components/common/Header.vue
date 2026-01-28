@@ -37,15 +37,6 @@
         <i class="ph ph-export text-xl"></i>
       </button>
 
-      <!-- Referential Panel -->
-      <button
-        @click="$emit('toggle-referential')"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
-        title="Référentiel DigComp"
-      >
-        <i class="ph ph-tree-structure text-xl"></i>
-      </button>
-
       <!-- Dark Mode Toggle -->
       <button
         @click="darkMode.toggle()"
