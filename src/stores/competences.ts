@@ -490,18 +490,16 @@ export const useCompetencesStore = defineStore('competences', () => {
 
     // Notify assignees
     const notificationsStore = useNotificationsStore()
-    const assignees = outcome.assignees || []
-    for (const assignee of assignees) {
-      if (assignee !== authStore.currentUser?.email) {
-        await notificationsStore.notifyCalendarEvent(
-          outcomeId,
-          year,
-          deadline.label,
-          new Date(deadline.date).toISOString().split('T')[0],
-          assignee,
-          authStore.currentUser?.email || ''
-        )
-      }
+    const assignees = (outcome.assignees || []).filter(a => a !== authStore.currentUser?.email)
+    if (assignees.length > 0) {
+      await notificationsStore.notifyDeadlineAssigned(
+        outcomeId,
+        year,
+        deadline.label,
+        new Date(deadline.date).toLocaleDateString('fr-FR'),
+        assignees,
+        authStore.currentUser?.email || ''
+      )
     }
 
     success('Deadline définie')

@@ -18,7 +18,8 @@
       </div>
       <button
         @click="$emit('close')"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition md:hidden"
+        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
+        title="Fermer le chat"
       >
         <i class="ph ph-x text-xl"></i>
       </button>

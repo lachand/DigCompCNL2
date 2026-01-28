@@ -116,6 +116,7 @@
             <div v-if="notificationsStore.sortedNotifications.length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
               <i class="ph ph-bell-slash text-4xl mb-2"></i>
               <p>Aucune notification</p>
+              <p class="text-xs mt-2 opacity-75">Les notifications apparaîtront ici quand vous serez assigné à des LO, quand des deadlines seront fixées, ou quand une review sera demandée.</p>
             </div>
             <div
               v-for="notif in notificationsStore.sortedNotifications"
@@ -334,6 +335,11 @@ const darkMode = useDarkMode()
 const { validateApiKey } = useGemini()
 const { success, error: showError } = useToast()
 
+// Debug notifications in development
+if (process.env.NODE_ENV === 'development') {
+  console.log('[DigComp Notifications] Store loaded. Unread count:', notificationsStore.unreadCount)
+}
+
 const { pendingCount: reviewPendingCount } = useReviewRequests()
 const { userStats: gamificationStats } = useGamification()
 
@@ -413,6 +419,8 @@ const getNotificationIcon = (type: string) => {
     status_change: 'ph ph-arrow-right',
     comment: 'ph ph-chat-circle',
     calendar: 'ph ph-calendar',
+    deadline: 'ph ph-calendar-x',
+    review: 'ph ph-user-check',
     mention: 'ph ph-at'
   }
   return icons[type] || 'ph ph-bell'
@@ -424,6 +432,8 @@ const getNotificationIconClass = (type: string) => {
     status_change: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
     comment: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
     calendar: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
+    deadline: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
+    review: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
     mention: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400'
   }
   return classes[type] || 'bg-gray-100 text-gray-600'

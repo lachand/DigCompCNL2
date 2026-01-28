@@ -18,7 +18,7 @@ import { useAuthStore } from './auth'
 
 export interface Notification {
   id?: string
-  type: 'assignment' | 'status_change' | 'comment' | 'calendar' | 'mention'
+  type: 'assignment' | 'status_change' | 'comment' | 'deadline' | 'review' | 'mention'
   title: string
   message: string
   outcomeId?: string
@@ -28,6 +28,8 @@ export interface Notification {
   createdAt: number
   read: boolean
   link?: string
+  assignedBy?: string
+  description?: string
 }
 
 export const useNotificationsStore = defineStore('notifications', () => {
@@ -39,33 +41,50 @@ export const useNotificationsStore = defineStore('notifications', () => {
   const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
   const sortedNotifications = computed(() => {
-    return [...notifications.value].sort((a, b) => b.createdAt - a.createdAt)
+    return [...notifications.value]
+      .filter(n => n && n.createdAt)
+      .sort((a, b) => {
+        const aTime = typeof a.createdAt === 'number' ? a.createdAt : 0
+        const bTime = typeof b.createdAt === 'number' ? b.createdAt : 0
+        return bTime - aTime
+      })
   })
 
   const loadNotifications = () => {
     const authStore = useAuthStore()
     if (!authStore.currentUser?.email) return
 
-    const q = query(
-      collection(db, 'notifications'),
-      where('targetUser', '==', authStore.currentUser.email),
-      orderBy('createdAt', 'desc'),
-      limit(50)
-    )
+    try {
+      const q = query(
+        collection(db, 'notifications'),
+        where('targetUser', '==', authStore.currentUser.email),
+        orderBy('createdAt', 'desc'),
+        limit(100)
+      )
 
-    unsubscribe = onSnapshot(q, (snapshot) => {
-      notifications.value = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Notification))
-    })
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        notifications.value = snapshot.docs.map(doc => {
+          const data = doc.data()
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: typeof data.createdAt === 'number' ? data.createdAt : (data.createdAt?.toMillis?.() || Date.now())
+          } as Notification
+        })
+      }, (err) => {
+        console.error('Error loading notifications:', err)
+      })
+    } catch (err) {
+      console.error('Error setting up notifications listener:', err)
+    }
   }
 
   const createNotification = async (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
     try {
+      const now = Date.now()
       await addDoc(collection(db, 'notifications'), {
         ...notification,
-        createdAt: Date.now(),
+        createdAt: now,
         read: false
       })
     } catch (err) {
@@ -113,14 +132,16 @@ export const useNotificationsStore = defineStore('notifications', () => {
     assigneeEmail: string,
     assignerEmail: string
   ) => {
+    const yearLabel = year === 'all' ? 'toutes les années' : year
     await createNotification({
       type: 'assignment',
       title: 'Nouvelle assignation',
-      message: `Vous avez ete assigne au LO ${outcomeId} (${year})`,
+      message: `${assignerEmail.split('@')[0]} vous a assigné au LO ${outcomeId} (${yearLabel})`,
       outcomeId,
       year,
       targetUser: assigneeEmail,
       createdBy: assignerEmail,
+      assignedBy: assignerEmail,
       link: `/outcomes?lo=${outcomeId}`
     })
   }
@@ -132,11 +153,19 @@ export const useNotificationsStore = defineStore('notifications', () => {
     assignees: string[],
     changerEmail: string
   ) => {
+    const statusLabels: Record<string, string> = {
+      'draft': 'Brouillon',
+      'in_progress': 'En cours',
+      'review': 'En review',
+      'validated': 'Validé',
+      'obsolete': 'Obsolète'
+    }
+    const statusLabel = statusLabels[newStatus] || newStatus
     const promises = assignees.map(email =>
       createNotification({
         type: 'status_change',
         title: 'Changement de statut',
-        message: `Le LO ${outcomeId} (${year}) est maintenant "${newStatus}"`,
+        message: `${changerEmail.split('@')[0]} a changé le statut du LO ${outcomeId} (${year}) à "${statusLabel}"`,
         outcomeId,
         year,
         targetUser: email,
@@ -157,7 +186,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
       createNotification({
         type: 'comment',
         title: 'Nouveau commentaire',
-        message: `${commenterEmail.split('@')[0]}: "${commentText.substring(0, 50)}..."`,
+        message: `${commenterEmail.split('@')[0]} a commenté ${outcomeId}: "${commentText.substring(0, 60)}${commentText.length > 60 ? '...' : ''}"`,
         outcomeId,
         targetUser: email,
         createdBy: commenterEmail,
@@ -176,15 +205,40 @@ export const useNotificationsStore = defineStore('notifications', () => {
     creatorEmail: string
   ) => {
     await createNotification({
-      type: 'calendar',
-      title: 'Evenement planifie',
-      message: `${eventType} planifiee pour ${outcomeId} (${year}) le ${eventDate}`,
+      type: 'deadline',
+      title: 'Nouvelle deadline',
+      message: `Deadline assignée pour ${outcomeId} (${year}): "${eventType}" le ${eventDate}`,
       outcomeId,
       year,
       targetUser: targetEmail,
       createdBy: creatorEmail,
-      link: '/calendar'
+      assignedBy: creatorEmail,
+      link: `/outcomes?lo=${outcomeId}`
     })
+  }
+
+  const notifyDeadlineAssigned = async (
+    outcomeId: string,
+    year: string,
+    deadlineLabel: string,
+    deadlineDate: string,
+    assignees: string[],
+    creatorEmail: string
+  ) => {
+    const promises = assignees.map(email =>
+      createNotification({
+        type: 'deadline',
+        title: 'Deadline assignée',
+        message: `${creatorEmail.split('@')[0]} vous a assigné une deadline pour ${outcomeId} (${year}): "${deadlineLabel}" le ${deadlineDate}`,
+        outcomeId,
+        year,
+        targetUser: email,
+        createdBy: creatorEmail,
+        assignedBy: creatorEmail,
+        link: `/calendar`
+      })
+    )
+    await Promise.all(promises)
   }
 
   const notifyReviewRequest = async (
@@ -195,13 +249,14 @@ export const useNotificationsStore = defineStore('notifications', () => {
     comment?: string
   ) => {
     await createNotification({
-      type: 'assignment',
+      type: 'review',
       title: 'Demande de review',
       message: `${requesterEmail.split('@')[0]} demande votre review pour ${outcomeId} (${year})${comment ? ` : "${comment.substring(0, 50)}"` : ''}`,
       outcomeId,
       year,
       targetUser: reviewerEmail,
       createdBy: requesterEmail,
+      assignedBy: requesterEmail,
       link: `/outcomes?lo=${outcomeId}`
     })
   }
@@ -215,10 +270,11 @@ export const useNotificationsStore = defineStore('notifications', () => {
     comment?: string
   ) => {
     const statusLabel = status === 'approved' ? 'approuvée' : 'rejetée'
+    const actionVerb = status === 'approved' ? 'approuvé' : 'rejeté'
     await createNotification({
-      type: 'status_change',
+      type: 'review',
       title: `Review ${statusLabel}`,
-      message: `${reviewerEmail.split('@')[0]} a ${statusLabel} votre review pour ${outcomeId} (${year})${comment ? ` : "${comment.substring(0, 50)}"` : ''}`,
+      message: `${reviewerEmail.split('@')[0]} a ${actionVerb} votre review pour ${outcomeId} (${year})${comment ? ` : "${comment.substring(0, 50)}"` : ''}`,
       outcomeId,
       year,
       targetUser: requesterEmail,
@@ -249,6 +305,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
     notifyStatusChange,
     notifyComment,
     notifyCalendarEvent,
+    notifyDeadlineAssigned,
     notifyReviewRequest,
     notifyReviewResult,
     cleanup
