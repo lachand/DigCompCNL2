@@ -135,8 +135,6 @@
 import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { formatDate, linkify } from '@/utils/helpers'
-import { useToast } from '@/composables/useToast'
-import { useMentions } from '@/composables/useMentions'
 import UserAvatar from '@/components/auth/UserAvatar.vue'
 import type { ChatMessage } from '@/types'
 
@@ -154,8 +152,6 @@ const emit = defineEmits<{
 }>()
 
 const authStore = useAuthStore()
-const { success, error: showError } = useToast()
-const { highlightMentions: highlightMentionsUtil } = useMentions()
 
 const showReactionPicker = ref(false)
 const showDeleteConfirm = ref(false)

@@ -84,11 +84,14 @@
         </button>
 
         <!-- Textarea with @mentions support -->
-        <MentionTextarea
-          :model-value="messageText"
-          @update:model-value="messageText = $event"
-          @mentions-detected="detectedMentions = $event"
-        />
+        <div class="flex-1">
+          <MentionTextarea
+            :model-value="messageText"
+            @update:model-value="messageText = $event"
+            @mentions-detected="detectedMentions = $event"
+            @send="sendMessage"
+          />
+        </div>
 
         <!-- Send Button -->
         <button
@@ -161,7 +164,7 @@ defineEmits<{
 const authStore = useAuthStore()
 const chatStore = useChatStore()
 const { success, error: showError } = useToast()
-const { findMentionedUsers } = useMentions()
+const { findMentionedUsers: _findMentionedUsers } = useMentions()
 
 const messageText = ref('')
 const detectedMentions = ref<string[]>([])
@@ -178,10 +181,6 @@ const onlineUsers = computed(() => authStore.users.filter(u => u.state === 'onli
 const typingUsers = computed(() => authStore.users.filter(u => u.isTyping && u.uid !== authStore.currentUser?.uid))
 
 const canSend = computed(() => messageText.value.trim().length > 0 || attachmentPreview.value)
-
-const handleTyping = () => {
-  chatStore.setTyping(true)
-}
 
 const handleFileSelect = async (e: Event) => {
   const file = (e.target as HTMLInputElement).files?.[0]
@@ -282,7 +281,7 @@ const scrollToFirstUnread = () => {
   })
 }
 
-watch(() => chatStore.sortedMessages.length, (newLen, oldLen) => {
+  watch(() => chatStore.sortedMessages.length, (_newLen, oldLen) => {
   // Only scroll to bottom for new messages, not initial load
   if (oldLen > 0) {
     scrollToBottom()

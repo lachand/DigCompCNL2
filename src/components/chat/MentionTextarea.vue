@@ -32,11 +32,10 @@
     <textarea
       :value="modelValue"
       @input="handleInput"
-      @keydown.enter.ctrl="$emit('send')"
-      @keydown.down.prevent="selectedIndex < mentionSuggestions.length - 1 && selectedIndex++"
-      @keydown.up.prevent="selectedIndex > 0 && selectedIndex--"
-      @keydown.enter.prevent="showMentionPopup && selectedIndex >= 0 ? insertMention(mentionSuggestions[selectedIndex].email) : $emit('send')"
-      placeholder="Message avec @mentions... (Ctrl+Entrée pour envoyer)"
+      @keydown.enter.prevent="handleEnter"
+      @keydown.down.prevent="navigateSuggestions('down')"
+      @keydown.up.prevent="navigateSuggestions('up')"
+      placeholder="Message avec @mentions... (Entrée pour envoyer • Shift+Entrée pour nouvelle ligne)"
       class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
       rows="3"
     />
@@ -134,5 +133,45 @@ const insertMention = (email: string) => {
   currentMentionText.value = ''
   mentionStartIndex.value = -1
   selectedIndex.value = -1
+}
+
+// Navigation dans les suggestions
+const navigateSuggestions = (direction: 'up' | 'down') => {
+  if (!showMentionPopup.value || mentionSuggestions.value.length === 0) return
+  
+  if (direction === 'down') {
+    selectedIndex.value = Math.min(selectedIndex.value + 1, mentionSuggestions.value.length - 1)
+  } else {
+    selectedIndex.value = Math.max(selectedIndex.value - 1, -1)
+  }
+}
+
+// Gestion de la touche Entrée
+const handleEnter = (e: KeyboardEvent) => {
+  // Si un suggestion est sélectionné et popup ouvert, insérer la mention
+  if (showMentionPopup.value && selectedIndex.value >= 0) {
+    insertMention(mentionSuggestions.value[selectedIndex.value].email)
+    return
+  }
+  
+  // Si Shift+Entrée, ajouter une nouvelle ligne
+  if (e.shiftKey) {
+    const text = props.modelValue
+    const textarea = e.target as HTMLTextAreaElement
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const newText = text.substring(0, start) + '\n' + text.substring(end)
+    emit('update:modelValue', newText)
+    
+    // Re-focus et position du cursor
+    setTimeout(() => {
+      textarea.focus()
+      textarea.selectionStart = textarea.selectionEnd = start + 1
+    }, 0)
+    return
+  }
+  
+  // Sinon, Entrée simple envoie le message
+  emit('send')
 }
 </script>
