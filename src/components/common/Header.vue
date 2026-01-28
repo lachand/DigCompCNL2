@@ -18,17 +18,6 @@
 
     <!-- Actions -->
     <div data-tour="header-actions" class="flex items-center gap-4">
-      <!-- Search -->
-      <div class="relative hidden md:block">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Rechercher..."
-          class="w-64 pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-          @keyup.enter="handleSearch"
-        />
-        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-      </div>
 
       <!-- Magic Import -->
       <button

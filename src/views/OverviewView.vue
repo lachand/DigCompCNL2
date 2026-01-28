@@ -61,6 +61,32 @@
       </div>
     </div>
 
+    <!-- Heatmap by Domain -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div
+        v-for="domain in competencesStore.digCompData.domains"
+        :key="domain.id"
+        class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6"
+      >
+        <h4 class="font-semibold text-gray-900 dark:text-white mb-4">{{ domain.name }}</h4>
+        <div class="space-y-2">
+          <div v-for="year in (['L1', 'L2', 'L3'] as YearLevel[])" :key="year">
+            <div class="flex items-center justify-between text-sm mb-1">
+              <span class="text-gray-600 dark:text-gray-400">{{ year }}</span>
+              <span class="font-medium text-gray-900 dark:text-white">{{ getDomainYearCoverage(domain.id, year) }}%</span>
+            </div>
+            <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div
+                class="h-full rounded-full transition-all"
+                :class="yearColor(year)"
+                :style="{ width: getDomainYearCoverage(domain.id, year) + '%' }"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Matrix View -->
     <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
       <div class="flex items-center justify-between mb-6">
@@ -145,31 +171,6 @@
       </div>
     </div>
 
-    <!-- Heatmap by Domain -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div
-        v-for="domain in competencesStore.digCompData.domains"
-        :key="domain.id"
-        class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6"
-      >
-        <h4 class="font-semibold text-gray-900 dark:text-white mb-4">{{ domain.name }}</h4>
-        <div class="space-y-2">
-          <div v-for="year in (['L1', 'L2', 'L3'] as YearLevel[])" :key="year">
-            <div class="flex items-center justify-between text-sm mb-1">
-              <span class="text-gray-600 dark:text-gray-400">{{ year }}</span>
-              <span class="font-medium text-gray-900 dark:text-white">{{ getDomainYearCoverage(domain.id, year) }}%</span>
-            </div>
-            <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                class="h-full rounded-full transition-all"
-                :class="yearColor(year)"
-                :style="{ width: getDomainYearCoverage(domain.id, year) + '%' }"
-              ></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
