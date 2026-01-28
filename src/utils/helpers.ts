@@ -57,18 +57,19 @@ export function playSound(soundName: string): void {
 
   const soundUrls: Record<string, string> = {
     fanfare: 'https://www.myinstants.com/media/sounds/fanfare.mp3',
-    meow: 'https://www.myinstants.com/media/sounds/meow.mp3',
+    meow: 'https://www.myinstants.com/media/sounds/m-e-o-w.mp3',
     college: 'https://www.myinstants.com/media/sounds/college-bip.mp3',
     sncf: 'https://www.myinstants.com/media/sounds/sncf.mp3',
     xp: 'https://www.myinstants.com/media/sounds/windows-xp-error.mp3',
     motus: 'https://www.myinstants.com/media/sounds/motus.mp3',
     airhorn: 'https://www.myinstants.com/media/sounds/air-horn.mp3',
-    heehee: 'https://www.myinstants.com/media/sounds/he-he-he-haw.mp3',
+    heehee: 'https://www.myinstants.com/media/sounds/hee-hee.mp3',
     romantic: 'https://www.myinstants.com/media/sounds/romantic-music.mp3',
-    tennis: 'https://www.myinstants.com/media/sounds/wii-sports-tennis.mp3',
+    tennis: 'https://www.myinstants.com/media/sounds/tennis-shot.mp3',
+    tennis2 : 'https://www.myinstants.com/media/sounds/tennis-shot-2.mp3',
     gandalf: 'https://www.myinstants.com/media/sounds/you-shall-not-pass.mp3',
-    kawoosh: 'https://www.myinstants.com/media/sounds/kawoosh.mp3',
-    zat: 'https://www.myinstants.com/media/sounds/zat-gun-sound.mp3'
+    kawoosh: 'https://www.myinstants.com/media/sounds/spellgate-activation.mp3',
+    zat: 'https://www.myinstants.com/media/sounds/zat-gun-2.mp3'
   }
 
   const url = soundUrls[soundName]

@@ -187,6 +187,14 @@ export interface UserStats {
   }
 }
 
+export interface ExternalMember {
+  id: string
+  firstName: string
+  lastName: string
+  createdBy: string
+  createdAt: number
+}
+
 export interface Lock {
   user: string
   timestamp: number
@@ -245,6 +253,7 @@ export const SOUND_OPTIONS = [
   { value: 'heehee', label: 'Hee-hee' },
   { value: 'romantic', label: 'Romantique' },
   { value: 'tennis', label: 'Tennis' },
+  { value: 'tennis2', label: 'Tennis 2' },
   { value: 'gandalf', label: 'Gandalf' },
   { value: 'kawoosh', label: 'Kawoosh' },
   { value: 'zat', label: 'Zat' },

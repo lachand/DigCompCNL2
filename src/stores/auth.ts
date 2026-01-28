@@ -4,6 +4,9 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
   type User as FirebaseUser
 } from 'firebase/auth'
 import {
@@ -13,21 +16,25 @@ import {
   collection,
   serverTimestamp,
   updateDoc,
+  addDoc,
+  deleteDoc,
   Unsubscribe
 } from 'firebase/firestore'
 import { auth, db } from '@/firebase/config'
-import type { User } from '@/types'
+import type { User, ExternalMember } from '@/types'
 import { getUserColor } from '@/utils/helpers'
 
 export const useAuthStore = defineStore('auth', () => {
   const currentUser = ref<FirebaseUser | null>(null)
   const userData = ref<User | null>(null)
   const users = ref<User[]>([])
+  const externalMembers = ref<ExternalMember[]>([])
   const loading = ref(true)
   const error = ref('')
 
   let heartbeatInterval: number | null = null
   let usersUnsubscribe: Unsubscribe | null = null
+  let externalMembersUnsubscribe: Unsubscribe | null = null
 
   const userColor = computed(() => {
     return userData.value?.email ? getUserColor(userData.value.email) : '#3b82f6'
@@ -111,6 +118,51 @@ export const useAuthStore = defineStore('auth', () => {
     return userData.value?.pinned?.includes(outcomeId) || false
   }
 
+  const addExternalMember = async (firstName: string, lastName: string): Promise<string> => {
+    if (!currentUser.value?.email) throw new Error('Non connecté')
+
+    const docRef = await addDoc(collection(db, 'external_members'), {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      createdBy: currentUser.value.email,
+      createdAt: Date.now()
+    })
+    return docRef.id
+  }
+
+  const removeExternalMember = async (id: string): Promise<void> => {
+    await deleteDoc(doc(db, 'external_members', id))
+  }
+
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+    if (!currentUser.value || !currentUser.value.email) {
+      throw new Error('Aucun utilisateur connecté')
+    }
+
+    const credential = EmailAuthProvider.credential(
+      currentUser.value.email,
+      currentPassword
+    )
+
+    try {
+      await reauthenticateWithCredential(currentUser.value, credential)
+    } catch (err: any) {
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        throw new Error('Le mot de passe actuel est incorrect')
+      }
+      throw new Error('Erreur de réauthentification : ' + (err.message || 'Erreur inconnue'))
+    }
+
+    try {
+      await updatePassword(currentUser.value, newPassword)
+    } catch (err: any) {
+      if (err.code === 'auth/weak-password') {
+        throw new Error('Le nouveau mot de passe est trop faible (minimum 6 caractères)')
+      }
+      throw new Error('Erreur lors du changement : ' + (err.message || 'Erreur inconnue'))
+    }
+  }
+
   const initAuth = () => {
     onAuthStateChanged(auth, async (user) => {
       currentUser.value = user
@@ -145,13 +197,23 @@ export const useAuthStore = defineStore('auth', () => {
         usersUnsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
           users.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User))
         })
+
+        // Listen to external members
+        externalMembersUnsubscribe = onSnapshot(collection(db, 'external_members'), (snapshot) => {
+          externalMembers.value = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ExternalMember))
+        })
       } else {
         userData.value = null
         users.value = []
+        externalMembers.value = []
 
         if (usersUnsubscribe) {
           usersUnsubscribe()
           usersUnsubscribe = null
+        }
+        if (externalMembersUnsubscribe) {
+          externalMembersUnsubscribe()
+          externalMembersUnsubscribe = null
         }
       }
     })
@@ -169,6 +231,10 @@ export const useAuthStore = defineStore('auth', () => {
     updateUserField,
     togglePin,
     isPinned,
+    changePassword,
+    externalMembers,
+    addExternalMember,
+    removeExternalMember,
     initAuth
   }
 })

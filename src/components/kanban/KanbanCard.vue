@@ -43,12 +43,17 @@
 
       <!-- Assignees -->
       <div class="flex -space-x-1">
-        <UserAvatar
-          v-for="email in outcome.assignees?.slice(0, 2)"
-          :key="email"
-          :email="email"
-          :size="20"
-        />
+        <template v-for="key in outcome.assignees?.slice(0, 2)" :key="key">
+          <div
+            v-if="key.startsWith('ext:')"
+            class="rounded-full flex items-center justify-center font-bold text-white flex-shrink-0"
+            :style="{ width: '20px', height: '20px', backgroundColor: getExternalColor(key), fontSize: '8px' }"
+            :title="getExternalName(key) + ' (externe)'"
+          >
+            {{ getExternalInitials(key) }}
+          </div>
+          <UserAvatar v-else :email="key" :size="20" />
+        </template>
         <div
           v-if="(outcome.assignees?.length || 0) > 2"
           class="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-medium"
@@ -81,6 +86,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import UserAvatar from '@/components/auth/UserAvatar.vue'
+import { useAuthStore } from '@/stores/auth'
+import { getUserColor } from '@/utils/helpers'
 import type { LearningOutcome, YearLevel } from '@/types'
 
 interface Props {
@@ -89,6 +96,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const authStore = useAuthStore()
 
 const emit = defineEmits<{
   dragStart: [e: DragEvent]
@@ -107,6 +115,23 @@ const levelClass = computed(() => {
 
 const resourcesCount = computed(() => props.outcome.mappings[props.year].resources?.length || 0)
 const commentsCount = computed(() => props.outcome.comments?.length || 0)
+
+const getExternalName = (key: string): string => {
+  const id = key.replace('ext:', '')
+  const member = authStore.externalMembers.find(m => m.id === id)
+  return member ? `${member.firstName} ${member.lastName}` : 'Membre inconnu'
+}
+
+const getExternalInitials = (key: string): string => {
+  const id = key.replace('ext:', '')
+  const member = authStore.externalMembers.find(m => m.id === id)
+  if (member) return (member.firstName[0] + member.lastName[0]).toUpperCase()
+  return '??'
+}
+
+const getExternalColor = (key: string): string => {
+  return getUserColor(getExternalName(key))
+}
 
 const onDragStart = (e: DragEvent) => {
   emit('dragStart', e)

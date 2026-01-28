@@ -179,31 +179,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Recent Activity -->
-    <div class="p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Activité récente</h3>
-
-      <div v-if="recentActivity.length > 0" class="space-y-3">
-        <div
-          v-for="activity in recentActivity"
-          :key="activity.id"
-          class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
-        >
-          <div class="w-8 h-8 rounded-full flex items-center justify-center" :class="activity.iconBg">
-            <i :class="activity.icon"></i>
-          </div>
-          <div class="flex-1">
-            <p class="text-sm text-gray-900 dark:text-white">{{ activity.description }}</p>
-            <p class="text-xs text-gray-500">{{ activity.user }} · {{ formatDate(activity.timestamp) }}</p>
-          </div>
-        </div>
-      </div>
-
-      <div v-else class="text-center py-8 text-gray-500">
-        Aucune activité récente
-      </div>
-    </div>
   </div>
 </template>
 

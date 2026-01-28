@@ -136,6 +136,7 @@ import { ref, computed, reactive, watch } from 'vue'
 import { jsPDF } from 'jspdf'
 import * as XLSX from 'xlsx'
 import { useCompetencesStore } from '@/stores/competences'
+import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import Modal from '@/components/common/Modal.vue'
 import type { YearLevel, StatusType, LearningOutcome, ExportFilters } from '@/types'
@@ -148,6 +149,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
 
 const competencesStore = useCompetencesStore()
+const authStore = useAuthStore()
 const { success, error: showError } = useToast()
 
 const isOpen = computed({
@@ -291,7 +293,13 @@ const exportToExcel = async () => {
       'Description': outcome.description,
       'Niveau': outcome.level,
       'Tags': (outcome.tags || []).join(', '),
-      'Assignés': (outcome.assignees || []).join(', ')
+      'Assignés': (outcome.assignees || []).map(a => {
+        if (a.startsWith('ext:')) {
+          const member = authStore.externalMembers.find(m => m.id === a.replace('ext:', ''))
+          return member ? `${member.firstName} ${member.lastName} (externe)` : a
+        }
+        return a
+      }).join(', ')
     }
 
     filters.years.forEach(year => {

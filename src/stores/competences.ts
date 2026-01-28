@@ -188,9 +188,9 @@ export const useCompetencesStore = defineStore('competences', () => {
       date: Date.now()
     })
 
-    // Notify assignees
+    // Notify assignees (exclude external members)
     const notificationsStore = useNotificationsStore()
-    const assignees = outcome.assignees || []
+    const assignees = (outcome.assignees || []).filter(a => !a.startsWith('ext:'))
     if (assignees.length > 0) {
       await notificationsStore.notifyStatusChange(
         outcomeId,
@@ -322,7 +322,7 @@ export const useCompetencesStore = defineStore('competences', () => {
     })
   }
 
-  const toggleAssignee = async (outcomeId: string, email: string) => {
+  const toggleAssignee = async (outcomeId: string, assigneeKey: string) => {
     const outcome = getOutcomeById(outcomeId)
     if (!outcome) return
 
@@ -330,24 +330,24 @@ export const useCompetencesStore = defineStore('competences', () => {
       outcome.assignees = []
     }
 
-    const index = outcome.assignees.indexOf(email)
+    const index = outcome.assignees.indexOf(assigneeKey)
     const isAdding = index === -1
     if (index > -1) {
       outcome.assignees.splice(index, 1)
     } else {
-      outcome.assignees.push(email)
+      outcome.assignees.push(assigneeKey)
     }
 
     await saveData()
 
-    // Notify the assigned user
-    if (isAdding) {
+    // Notify the assigned user (only for registered users, not external members)
+    if (isAdding && !assigneeKey.startsWith('ext:')) {
       const authStore = useAuthStore()
       const notificationsStore = useNotificationsStore()
       await notificationsStore.notifyAssignment(
         outcomeId,
         'all',
-        email,
+        assigneeKey,
         authStore.currentUser?.email || ''
       )
     }
