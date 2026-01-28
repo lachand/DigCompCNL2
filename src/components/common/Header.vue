@@ -191,6 +191,10 @@
                   {{ sound.label }}
                 </option>
               </select>
+
+              <button @click="playSound(authStore.userData?.prefSound || 'beep')" class="mt-2 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">
+                Écouter
+              </button> 
             </div>
 
             <!-- API Key -->
@@ -293,7 +297,7 @@ import { useNotificationsStore } from '@/stores/notifications'
 import { useDarkMode } from '@/composables/useDarkMode'
 import { useGemini } from '@/composables/useGemini'
 import { useToast } from '@/composables/useToast'
-import { formatDate } from '@/utils/helpers'
+import { formatDate, playSound } from '@/utils/helpers'
 import { SOUND_OPTIONS, AI_MODELS } from '@/types'
 import UserAvatar from '@/components/auth/UserAvatar.vue'
 import { useOnboardingTour } from '@/composables/useOnboardingTour'
