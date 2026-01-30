@@ -12,7 +12,7 @@
 
     <!-- Card skeleton -->
     <template v-else-if="type === 'card'">
-      <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+      <div class="theme-surface rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <div class="flex items-start gap-4">
           <div class="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
           <div class="flex-1">

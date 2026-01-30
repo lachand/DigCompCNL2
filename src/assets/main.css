@@ -2,8 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
+
 body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--color-background, #fff);
+  color: var(--color-text, #111827);
+}
+
+/* Theme variables for backgrounds and surfaces */
+.theme-bg {
+  background: var(--color-background, #fff) !important;
+}
+.theme-surface {
+  background: var(--color-surface, #f9fafb) !important;
+}
+.theme-primary {
+  background: var(--color-primary, #4f46e5) !important;
+  color: #fff !important;
+}
+.theme-secondary {
+  background: var(--color-secondary, #6b7280) !important;
+  color: #fff !important;
+}
+.theme-accent {
+  background: var(--color-accent, #ec4899) !important;
+  color: #fff !important;
+}
+.theme-text {
+  color: var(--color-text, #111827) !important;
+}
+
+/* Example for buttons */
+.btn-theme-primary {
+  background: var(--color-primary, #4f46e5) !important;
+  color: #fff !important;
+}
+.btn-theme-primary:hover {
+  background: var(--color-accent, #ec4899) !important;
+}
+
+/* Example for cards */
+.card-theme {
+  background: var(--color-surface, #f9fafb) !important;
+  color: var(--color-text, #111827) !important;
+  border: 1px solid var(--color-primary, #4f46e5);
 }
 
 .active-nav {

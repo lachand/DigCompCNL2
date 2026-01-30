@@ -92,6 +92,7 @@
       <!-- Additional Filters -->
       <div class="space-y-3">
         <label class="flex items-center gap-2 cursor-pointer">
+        <div class="theme-surface rounded-2xl shadow-2xl p-8 w-full max-w-md">
           <input
             v-model="filters.onlyWithCourse"
             type="checkbox"

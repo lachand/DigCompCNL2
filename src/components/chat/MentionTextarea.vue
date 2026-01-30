@@ -3,7 +3,7 @@
     <!-- Mention Autocomplete Popup -->
     <div
       v-if="showMentionPopup && mentionSuggestions.length > 0"
-      class="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-900/50 rounded-lg shadow-lg z-40 overflow-hidden"
+      class="absolute bottom-full left-0 mb-2 w-64 theme-surface border border-indigo-200 dark:border-indigo-900/50 rounded-lg shadow-lg z-40 overflow-hidden"
     >
       <div class="bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 text-xs font-semibold text-indigo-700 dark:text-indigo-400 flex items-center gap-1">
         <i class="ph ph-at"></i>

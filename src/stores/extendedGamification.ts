@@ -1,3 +1,31 @@
+  // Bonus state
+  const activeBonuses = ref<{ xpMultiplier?: number; protection?: boolean }>({})
+
+  /**
+   * Active a bonus item (xp multiplier, protection, etc.)
+   */
+  const activateBonus = async (itemId: string) => {
+    if (!userInventory.value) return
+    // Find the first unused item in inventory
+    const idx = userInventory.value.items.findIndex(i => i.itemId === itemId && !i.equipped)
+    if (idx === -1) {
+      error('Aucun bonus disponible à activer !')
+      return
+    }
+    // Mark as equipped
+    userInventory.value.items[idx].equipped = true
+    await updateDoc(doc(db, 'userInventories', userInventory.value.userId), {
+      items: userInventory.value.items
+    })
+    // Set local effect
+    if (itemId.includes('xp') || itemId.includes('multiplier')) {
+      activeBonuses.value.xpMultiplier = 2 // ou lire la valeur du shopItem si besoin
+      success('Multiplicateur d\'XP activé pour la prochaine récompense !')
+    } else if (itemId.includes('protection')) {
+      activeBonuses.value.protection = true
+      success('Protection activée pour la prochaine pénalité !')
+    }
+  }
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
@@ -209,19 +237,21 @@ export const useExtendedGamificationStore = defineStore('extendedGamification', 
     // User inventory listener
     if (!inventoryUnsubscribe) {
       const inventoryRef = doc(db, 'userInventories', authStore.currentUser!.uid)
-      inventoryUnsubscribe = onSnapshot(inventoryRef, (doc) => {
-        if (doc.exists()) {
+      inventoryUnsubscribe = onSnapshot(inventoryRef, async (docSnap) => {
+        if (docSnap.exists()) {
           userInventory.value = {
-            userId: doc.id,
-            ...doc.data()
+            userId: docSnap.id,
+            ...docSnap.data()
           } as UserInventory
         } else {
-          // Initialize empty inventory
-          userInventory.value = {
+          // Initialize empty inventory in Firestore
+          const newInventory = {
             userId: authStore.currentUser!.uid,
             items: [],
             currency: { points: 0 }
           }
+          await setDoc(inventoryRef, newInventory)
+          userInventory.value = newInventory as UserInventory
         }
       })
     }
@@ -299,17 +329,26 @@ export const useExtendedGamificationStore = defineStore('extendedGamification', 
     if (!quest) return
 
     try {
-      // Add rewards to user
-      if (quest.rewards.points > 0) {
-        await addPoints(quest.rewards.points)
+      // Appliquer le multiplicateur d'XP si actif
+      let points = quest.rewards.points
+      let experience = quest.rewards.experience || 0
+      if (activeBonuses.value.xpMultiplier) {
+        experience = experience * activeBonuses.value.xpMultiplier
+        activeBonuses.value.xpMultiplier = undefined // Consommé
       }
+      // Ajout des points et XP
+      if (points > 0) {
+        await addPoints(points)
+      }
+      // Ici, tu pourrais ajouter la logique pour stocker l'XP si tu as un champ XP
+      // Protection: à utiliser lors d'une pénalité, non ici
 
       // Mark as claimed
       await updateDoc(doc(db, 'userQuests', userQuestId), {
         claimed: true
       })
 
-      success(`Récompense de ${quest.rewards.points} points réclamée !`)
+      success(`Récompense de ${points} points${experience ? ' et ' + experience + ' XP' : ''} réclamée !`)
     } catch (err) {
       console.error('Erreur lors de la réclamation de la récompense:', err)
     }
@@ -418,6 +457,8 @@ export const useExtendedGamificationStore = defineStore('extendedGamification', 
     addPoints,
     purchaseItem,
     joinChallenge,
-    startQuest
+    startQuest,
+    activateBonus,
+    activeBonuses
   }
 })

@@ -10,7 +10,7 @@
       leave-to-class="opacity-0"
     >
       <div v-if="showWelcome" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden">
+        <div class="theme-surface rounded-xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden">
           <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-8 text-white text-center">
             <i class="ph ph-graduation-cap text-5xl mb-3"></i>
             <h2 class="text-2xl font-bold">Bienvenue sur DigComp</h2>

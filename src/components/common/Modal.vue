@@ -10,7 +10,7 @@
 
         <!-- Modal -->
         <div
-          class="relative z-10 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-h-[90vh] flex flex-col"
+          class="relative z-10 theme-surface rounded-2xl shadow-2xl max-h-[90vh] flex flex-col"
           :class="sizeClasses"
           @click.stop
         >

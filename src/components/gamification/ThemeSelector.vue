@@ -40,10 +40,24 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useTheme } from '@/composables/useTheme'
+import { storeToRefs } from 'pinia'
+import { useExtendedGamificationStore } from '@/stores/extendedGamification'
 
 const theme = useTheme()
+const gamificationStore = useExtendedGamificationStore()
+const { userInventory } = storeToRefs(gamificationStore)
 
-const availableThemes = computed(() => theme.getThemeList())
+const availableThemes = computed(() => {
+  // Filter premium theme if not owned
+  const themes = theme.getThemeList()
+  return themes.filter(t => {
+    if (t.name === 'premium') {
+      // Only show if user owns the premium theme in inventory
+      return userInventory.value?.items?.some(i => i.itemId === 'premium')
+    }
+    return true
+  })
+})
 
 const currentThemeName = computed(() => {
   const current = availableThemes.value.find(t => t.name === theme.currentTheme.value)

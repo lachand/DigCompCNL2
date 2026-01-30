@@ -4,7 +4,7 @@
       <div
         v-for="achievement in newAchievements"
         :key="achievement.id"
-        class="bg-white dark:bg-gray-800 border-2 border-yellow-400 dark:border-yellow-600 rounded-lg p-4 shadow-2xl animate-bounce"
+        class="theme-surface border-2 border-yellow-400 dark:border-yellow-600 rounded-lg p-4 shadow-2xl animate-bounce"
         :class="rarityClasses[achievement.rarity]"
       >
         <div class="flex items-start gap-3">

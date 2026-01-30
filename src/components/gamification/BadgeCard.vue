@@ -2,7 +2,7 @@
   <div
     class="relative flex flex-col items-center p-3 rounded-xl border transition-all"
     :class="earned
-      ? 'bg-white dark:bg-gray-800 border-yellow-300 dark:border-yellow-600 shadow-sm hover:shadow-md'
+      ? 'theme-surface border-yellow-300 dark:border-yellow-600 shadow-sm hover:shadow-md'
       : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-60'"
   >
     <!-- Icon -->

@@ -1,12 +1,12 @@
 <template>
-  <header class="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6">
+  <header class="h-16 theme-surface border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6">
     <!-- Left Actions -->
     <div class="flex items-center gap-4">
       <!-- Activity History -->
       <button
         data-tour="history"
         @click="$emit('toggle-history')"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
+        class="p-2 hover:theme-bg rounded-lg transition text-gray-600 dark:text-gray-300"
         title="Historique d'activité"
       >
         <i class="ph ph-clock-counter-clockwise text-xl"></i>
@@ -22,7 +22,7 @@
       <!-- Magic Import -->
       <button
         @click="$emit('toggle-magic-import')"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
+        class="p-2 hover:theme-bg rounded-lg transition text-gray-600 dark:text-gray-300"
         title="Import magique"
       >
         <i class="ph ph-magic-wand text-xl"></i>
@@ -31,7 +31,7 @@
       <!-- Export -->
       <button
         @click="$emit('toggle-export')"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
+        class="p-2 hover:theme-bg rounded-lg transition text-gray-600 dark:text-gray-300"
         title="Exporter"
       >
         <i class="ph ph-export text-xl"></i>
@@ -45,7 +45,7 @@
         >
           <i class="ph ph-palette text-xl"></i>
         </button>
-        <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none group-hover:pointer-events-auto z-50">
+        <div class="absolute right-0 mt-2 w-48 theme-surface border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none group-hover:pointer-events-auto z-50">
           <div class="p-2 space-y-1">
             <button
               v-for="themeOption in availableThemes"
@@ -147,7 +147,7 @@
         <div
           v-if="showNotifications"
           v-click-away="() => showNotifications = false"
-          class="absolute right-0 mt-2 w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50"
+          class="absolute right-0 mt-2 w-96 theme-surface border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50"
         >
           <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <h3 class="font-semibold text-gray-900 dark:text-white">Notifications</h3>
@@ -212,14 +212,15 @@
           class="rounded-full hover:ring-2 hover:ring-indigo-400 transition"
           title="Paramètres"
         >
-          <UserAvatar :email="authStore.userData?.email || ''" :size="40" />
+          <UserAvatar :email="authStore.userData?.email || ''" :size="40" :hasStar="userHasGoldFrame" />
+
         </button>
 
         <!-- Settings Dropdown -->
         <div
           v-if="showSettings"
           v-click-away="() => showSettings = false"
-          class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50"
+          class="absolute right-0 mt-2 w-80 theme-surface border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50"
         >
           <div class="p-4 border-b border-gray-200 dark:border-gray-700">
             <h3 class="font-semibold text-gray-900 dark:text-white">Paramètres</h3>
@@ -337,6 +338,14 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
+import { useExtendedGamificationStore } from '@/stores/extendedGamification'
+
+const gamificationStore = useExtendedGamificationStore()
+const { userInventory } = storeToRefs(gamificationStore)
+const userHasGoldFrame = computed(() => {
+  return userInventory.value?.items?.some(item => item.itemId === 'avatar-frame-gold')
+})
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'

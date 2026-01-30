@@ -3,7 +3,7 @@
     <LoginForm />
   </div>
 
-  <div v-else class="flex h-screen overflow-hidden relative" @keydown="handleKeydown">
+  <div v-else class="flex h-screen overflow-hidden relative theme-bg theme-text" @keydown="handleKeydown">
     <!-- Sidebar -->
     <Sidebar />
 
@@ -28,7 +28,7 @@
       />
 
       <!-- Router View -->
-      <main class="flex-1 overflow-y-auto bg-gray-50 dark:bg-darkbg p-6">
+      <main class="flex-1 overflow-y-auto theme-surface p-6">
         <RouterView />
       </main>
     </div>

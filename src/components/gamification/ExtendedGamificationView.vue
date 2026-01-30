@@ -1,7 +1,7 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 theme-bg">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between theme-surface">
       <div>
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Quêtes & Défis</h2>
         <p class="text-gray-600 dark:text-gray-400">Accomplissez des missions pour gagner des récompenses</p>
@@ -14,7 +14,7 @@
     </div>
 
     <!-- Navigation tabs -->
-    <div class="flex border-b border-gray-200 dark:border-gray-700">
+    <div class="flex border-b border-gray-200 dark:border-gray-700 theme-surface">
       <button
         v-for="tab in tabs"
         :key="tab.id"
@@ -36,7 +36,7 @@
         <div
           v-for="questData in availableQuests"
           :key="questData.quest.id"
-          class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+          class="card-theme rounded-lg p-4"
         >
           <div class="flex items-start justify-between mb-3">
             <div class="flex-1">
@@ -123,7 +123,7 @@
         <div
           v-for="challenge in activeChallenges"
           :key="challenge.id"
-          class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+          class="card-theme rounded-lg p-4"
         >
           <div class="flex items-start justify-between mb-3">
             <div class="flex-1">
@@ -179,11 +179,17 @@
         <div
           v-for="item in availableShopItems"
           :key="item.id"
-          class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+          class="card-theme rounded-lg p-4"
         >
           <div class="text-center mb-3">
             <div class="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg mx-auto mb-2 flex items-center justify-center">
-              <i class="ph ph-shopping-bag text-xl text-gray-600 dark:text-gray-400"></i>
+              <i v-if="item.category === 'avatar'" class="ph ph-user-circle text-2xl text-indigo-500"></i>
+              <i v-else-if="item.category === 'badge'" class="ph ph-medal text-2xl text-yellow-500"></i>
+              <i v-else-if="item.category === 'utility' && (item.id.includes('protection') || item.name.toLowerCase().includes('protecteur'))" class="ph ph-shield text-2xl text-green-500"></i>
+              <i v-else-if="item.category === 'effect' && (item.id.includes('xp') || item.id.includes('multiplier') || item.name.toLowerCase().includes('multiplicateur'))" class="ph ph-trend-up text-2xl text-pink-500"></i>
+              <i v-else-if="item.category === 'theme' && item.id.includes('premium')" class="ph ph-paint-brush-broad text-2xl text-amber-500"></i>
+              <i v-else-if="item.category === 'theme'" class="ph ph-palette text-2xl text-blue-500"></i>
+              <i v-else class="ph ph-shopping-bag text-xl text-gray-600 dark:text-gray-400"></i>
             </div>
             <h3 class="font-semibold text-gray-900 dark:text-white">{{ item.name }}</h3>
             <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ item.description }}</p>
@@ -191,18 +197,42 @@
 
           <div class="flex items-center justify-between">
             <span class="text-lg font-bold text-yellow-600 dark:text-yellow-400">{{ item.price }} pts</span>
-            <button
-              @click="purchaseItem(item.id)"
-              :disabled="(userInventory?.currency.points || 0) < item.price"
-              class="px-3 py-1 rounded text-sm font-medium transition"
-              :class="[
-                (userInventory?.currency.points || 0) >= item.price
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
-              ]"
-            >
-              Acheter
-            </button>
+            <div class="flex items-center gap-2">
+              <button
+                v-if="!(item.category === 'utility' && (item.id.includes('protection') || item.id.includes('xp') || item.id.includes('multiplier')))"
+                @click="purchaseItem(item.id)"
+                :disabled="
+                  ((userInventory?.currency.points || 0) < item.price) ||
+                  (
+                    (item.category === 'avatar' || item.category === 'badge' || item.isLimited || item.category === 'theme')
+                    && userInventory?.items?.some(i => i.itemId === item.id)
+                  )
+                "
+                class="px-3 py-1 rounded text-sm font-medium transition"
+                :class="[
+                  ((userInventory?.currency.points || 0) >= item.price) && !((item.category === 'avatar' || item.category === 'badge' || item.isLimited) && userInventory?.items?.some(i => i.itemId === item.id))
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                    : 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
+                ]"
+              >
+                <span v-if="(item.category === 'avatar' || item.category === 'badge' || item.isLimited || item.category === 'theme') && userInventory?.items?.some(i => i.itemId === item.id)">
+                  Déjà possédé
+                </span>
+                <span v-else>Acheter</span>
+              </button>
+              <button
+                v-else
+                @click="activateBonus(item.id)"
+                class="px-3 py-1 rounded text-sm font-medium transition bg-green-600 hover:bg-green-700 text-white"
+              >
+                Activer
+              </button>
+              <span v-if="item.category === 'utility'">
+                <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                  x{{ userInventory?.items?.filter(i => i.itemId === item.id).length || 0 }}
+                </span>
+              </span>
+            </div>
           </div>
 
           <div v-if="item.isLimited && item.stock" class="mt-2 text-xs text-orange-600 dark:text-orange-400">
@@ -328,8 +358,13 @@ const claimReward = async (userQuestId: string) => {
   await store.claimQuestReward(userQuestId)
 }
 
+
 const purchaseItem = async (itemId: string) => {
   await store.purchaseItem(itemId)
+}
+
+const activateBonus = async (itemId: string) => {
+  await store.activateBonus(itemId)
 }
 
 const joinChallenge = async (challengeId: string) => {

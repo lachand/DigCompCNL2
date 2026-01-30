@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+  <div class="theme-surface rounded-lg border border-gray-200 dark:border-gray-700 p-6">
     <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
       <i class="ph ph-chart-line-up text-indigo-500"></i>
       Mes statistiques

@@ -9,7 +9,7 @@
   >
     <div
       v-if="isOpen"
-      class="fixed left-0 top-0 h-full w-96 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-xl z-40 flex flex-col"
+      class="fixed left-0 top-0 h-full w-96 theme-surface border-r border-gray-200 dark:border-gray-700 shadow-xl z-40 flex flex-col"
     >
       <!-- Header -->
       <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">

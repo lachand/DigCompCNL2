@@ -302,6 +302,19 @@ export const USER_COLORS = [
 ]
 
 export const THEMES: Record<ThemeName, ThemeConfig> = {
+    premium: {
+      name: 'premium',
+      displayName: 'Premium',
+      isDark: false,
+      colors: {
+        primary: '#FFD700', // or gold
+        secondary: '#C0C0C0',
+        accent: '#FF8C00',
+        background: '#fffbea',
+        surface: '#fff3cd',
+        text: '#7c5700'
+      }
+    },
   light: {
     name: 'light',
     displayName: 'Clair',

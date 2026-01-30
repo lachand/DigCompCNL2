@@ -25,7 +25,7 @@
         @dragover.prevent
         @dragenter="onDragEnter($event, column.status)"
         @dragleave="onDragLeave"
-        class="min-h-[200px] p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg transition-colors"
+        class="min-h-[200px] p-2 theme-surface rounded-lg transition-colors"
         :class="dragOverColumn === column.status ? 'bg-indigo-50 dark:bg-indigo-900/20 ring-2 ring-indigo-500' : ''"
       >
         <div class="space-y-3">

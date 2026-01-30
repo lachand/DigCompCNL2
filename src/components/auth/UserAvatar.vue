@@ -1,10 +1,13 @@
 <template>
   <div
-    class="rounded-full flex items-center justify-center font-bold text-white flex-shrink-0"
+    class="relative rounded-full flex items-center justify-center font-bold text-white flex-shrink-0"
     :style="{ width: size + 'px', height: size + 'px', backgroundColor: color, fontSize: fontSize + 'px' }"
     :title="email"
   >
     {{ initials }}
+    <span v-if="hasStar" class="absolute top-0 right-0 w-4 h-4 flex items-center justify-center z-10" style="background: white; border-radius: 50%; box-shadow: 0 0 2px #0002;">
+      <i class="ph ph-star text-yellow-400 text-base"></i>
+    </span>
   </div>
 </template>
 
@@ -12,13 +15,16 @@
 import { computed } from 'vue'
 import { getUserColor } from '@/utils/helpers'
 
+
 interface Props {
   email: string
   size?: number
+  hasStar?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  size: 32
+  size: 32,
+  hasStar: false
 })
 
 const initials = computed(() => {

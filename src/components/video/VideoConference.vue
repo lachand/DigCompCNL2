@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="isVisible"
-    class="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl overflow-hidden"
+    class="fixed z-50 theme-surface border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl overflow-hidden"
     :style="windowStyle"
   >
     <!-- Header -->

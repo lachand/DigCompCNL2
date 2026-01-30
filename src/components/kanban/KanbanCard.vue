@@ -2,7 +2,7 @@
   <div
     draggable="true"
     @dragstart="onDragStart"
-    class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 cursor-move hover:shadow-md transition group"
+    class="theme-surface border border-gray-200 dark:border-gray-700 rounded-lg p-3 cursor-move hover:shadow-md transition group"
   >
     <!-- Header -->
     <div class="flex items-start justify-between gap-2 mb-2">

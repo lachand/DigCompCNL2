@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full bg-white dark:bg-gray-800">
+  <div class="flex flex-col h-full theme-bg">
     <!-- Header -->
     <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
       <div>
@@ -11,6 +11,7 @@
               :key="user.uid"
               :email="user.email"
               :size="24"
+              :hasStar="user.uid === authStore.currentUser?.uid ? userHasGoldFrame : false"
             />
           </div>
           <span>{{ onlineUsers.length }} en ligne</span>
@@ -114,7 +115,7 @@
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       @click.self="editingMessage = null"
     >
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+      <div class="theme-surface rounded-lg p-6 max-w-md w-full mx-4">
         <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Éditer le message</h3>
         
         <textarea
@@ -145,6 +146,14 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
+import { useExtendedGamificationStore } from '@/stores/extendedGamification'
+
+const gamificationStore = useExtendedGamificationStore()
+const { userInventory } = storeToRefs(gamificationStore)
+const userHasGoldFrame = computed(() => {
+  return userInventory.value?.items?.some(item => item.itemId === 'avatar-frame-gold')
+})
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'

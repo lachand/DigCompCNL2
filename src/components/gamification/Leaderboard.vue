@@ -16,9 +16,9 @@
           <span class="text-sm">Progression</span>
           <span class="text-sm">{{ currentPoints }} / {{ userStats?.nextLevelPoints }} pts</span>
         </div>
-        <div class="w-full bg-white/20 rounded-full h-3">
+        <div class="w-full theme-bg/20 rounded-full h-3">
           <div
-            class="bg-white rounded-full h-3 transition-all duration-300"
+            class="theme-bg rounded-full h-3 transition-all duration-300"
             :style="{ width: progressPercentage + '%' }"
           ></div>
         </div>
@@ -85,7 +85,7 @@
         <div
           v-for="(user, index) in topUsers"
           :key="user.userId"
-          class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+          class="flex items-center gap-3 p-3 theme-surface rounded-lg"
         >
           <div class="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold">
             {{ index + 1 }}

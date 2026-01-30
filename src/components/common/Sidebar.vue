@@ -1,11 +1,11 @@
 <template>
   <aside
     data-tour="sidebar"
-    class="fixed left-0 top-0 h-screen bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 z-40"
+    class="fixed left-0 top-0 h-screen theme-surface border-r border-gray-200 dark:border-gray-700 transition-all duration-300 z-40"
     :class="isOpen ? 'w-64' : 'w-20'"
   >
     <!-- Logo & Toggle -->
-    <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+    <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 theme-bg">
       <div v-show="isOpen" class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-lg flex items-center justify-center" :style="{ backgroundColor: accentColor }">
           <i class="ph ph-graduation-cap text-xl text-white"></i>
@@ -22,13 +22,13 @@
     </div>
 
     <!-- Navigation -->
-    <nav class="p-4 space-y-2 overflow-y-auto overflow-x-hidden" style="max-height: calc(100vh - 200px)">
+    <nav class="p-4 space-y-2 overflow-y-auto overflow-x-hidden theme-bg" style="max-height: calc(100vh - 200px)">
       <!-- Simple menu items -->
       <router-link
         v-for="item in simpleMenuItems"
         :key="item.path"
         :to="item.path"
-        class="flex items-center gap-3 px-3 py-3 rounded-lg transition group"
+        class="flex items-center gap-3 px-3 py-3 rounded-lg transition group theme-surface"
         :class="isActive(item.path) ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
       >
         <i class="ph text-xl" :class="item.icon"></i>
@@ -42,7 +42,7 @@
       <div class="space-y-1">
         <button
           @click="toggleLOMenu"
-          class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition"
+          class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition theme-surface"
           :class="isLOActive ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
         >
           <i class="ph ph-list-checks text-xl"></i>
@@ -52,7 +52,7 @@
 
         <!-- LO Submenu -->
         <transition name="submenu">
-          <div v-if="loMenuExpanded && isOpen" class="ml-4 space-y-1 border-l-2 border-gray-200 dark:border-gray-700 pl-3">
+          <div v-if="loMenuExpanded && isOpen" class="ml-4 space-y-1 border-l-2 border-gray-200 dark:border-gray-700 pl-3 theme-bg">
             <router-link
               to="/outcomes"
               class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition"
@@ -76,7 +76,7 @@
                 </button>
                 <router-link
                   :to="`/outcomes/${encodeURIComponent(domain.id)}`"
-                  class="flex-1 flex items-center gap-2 px-2 py-2 rounded-lg text-sm transition"
+                  class="flex-1 flex items-center gap-2 px-2 py-2 rounded-lg text-sm transition theme-surface"
                   :class="isDomainActive(domain.id) ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'"
                   :title="domain.name || domain.title || domain.id"
                 >
@@ -91,7 +91,7 @@
                     v-for="comp in domain.competences"
                     :key="comp.id"
                     :to="`/outcomes/${encodeURIComponent(domain.id)}/${encodeURIComponent(comp.id)}`"
-                    class="flex items-center gap-2 px-2 py-1.5 rounded text-xs transition"
+                    class="flex items-center gap-2 px-2 py-1.5 rounded text-xs transition theme-surface"
                     :class="decodeURIComponent(String(route.params.competence || '')) === comp.id ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'"
                     :title="`${comp.id} - ${comp.name || comp.title || ''}`"
                   >
@@ -110,7 +110,7 @@
         v-for="item in bottomMenuItems"
         :key="item.path"
         :to="item.path"
-        class="flex items-center gap-3 px-3 py-3 rounded-lg transition group"
+        class="flex items-center gap-3 px-3 py-3 rounded-lg transition group theme-surface"
         :class="isActive(item.path) ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
       >
         <i class="ph text-xl" :class="item.icon"></i>
@@ -119,9 +119,9 @@
     </nav>
 
     <!-- User Section -->
-    <div class="absolute bottom-0 w-full p-4 border-t border-gray-200 dark:border-gray-700">
+    <div class="absolute bottom-0 w-full p-4 border-t border-gray-200 dark:border-gray-700 theme-bg">
       <div class="flex items-center gap-3">
-        <UserAvatar :email="authStore.userData?.email || ''" :size="40" />
+        <UserAvatar :email="authStore.userData?.email || ''" :size="40" :hasStar="userHasGoldFrame" />
         <div v-show="isOpen" class="flex-1 min-w-0">
           <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
             {{ authStore.userData?.email?.split('@')[0] }}
@@ -149,6 +149,14 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
+import { useExtendedGamificationStore } from '@/stores/extendedGamification'
+
+const gamificationStore = useExtendedGamificationStore()
+const { userInventory } = storeToRefs(gamificationStore)
+const userHasGoldFrame = computed(() => {
+  return userInventory.value?.items?.some(item => item.itemId === 'avatar-frame-gold')
+})
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
