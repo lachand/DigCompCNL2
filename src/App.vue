@@ -4,20 +4,23 @@
   </div>
 
   <div v-else class="flex h-screen overflow-hidden relative theme-bg theme-text" @keydown="handleKeydown">
-    <!-- Sidebar -->
-    <Sidebar />
+
+    <!-- Sidebar (drawer mobile) -->
+    <Sidebar :is-open="sidebarIsOpen" @close-sidebar="sidebarIsOpen = false" />
+    <!-- Overlay mobile -->
+    <div v-if="sidebarIsOpen && isMobile" class="fixed inset-0 z-30 bg-black bg-opacity-40 md:hidden" @click="sidebarIsOpen = false"></div>
 
     <!-- Main Content -->
     <div
       class="flex-1 flex flex-col overflow-hidden transition-all duration-300"
       :style="{
-        marginLeft: sidebarIsOpen ? '16rem' : '5rem',
+        marginLeft: sidebarIsOpen ? '16rem' : '0',
         marginRight: (isChatOpen || isReferentialOpen || isReviewPanelOpen) ? '24rem' : '0'
       }"
     >
       <!-- Header -->
       <Header
-        :video-active="videoConference?.isActive?.value ?? false"
+        :video-active="videoConference?.isActive ?? false"
         @toggle-chat="isChatOpen = !isChatOpen"
         @toggle-video="toggleVideo"
         @toggle-history="isHistoryOpen = !isHistoryOpen"
@@ -25,6 +28,7 @@
         @toggle-export="isExportOpen = true"
         @toggle-referential="isReferentialOpen = !isReferentialOpen"
         @toggle-reviews="isReviewPanelOpen = !isReviewPanelOpen"
+        @toggle-sidebar="sidebarIsOpen = !sidebarIsOpen"
       />
 
       <!-- Router View -->
@@ -78,10 +82,17 @@
 
     <!-- News Modal -->
     <NewsModal v-if="authStore.currentUser && newsStore.unreadNews.some(news => news && news.title && news.content && news.title.trim() && news.content.trim())" />
+
+    <!-- PWA Install Modal -->
+    <PWAInstallModal />
+
+    <!-- PWA Update Toast -->
+    <PWAUpdateToast />
   </div>
 </template>
 
 <script setup lang="ts">
+import EnablePushButton from './components/common/EnablePushButton.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { RouterView } from 'vue-router'
 import { useAuthStore } from './stores/auth'
@@ -107,6 +118,8 @@ import ReviewRequestPanel from './components/review/ReviewRequestPanel.vue'
 import NewsModal from './components/common/NewsModal.vue'
 import { useReviewRequests } from './composables/useReviewRequests'
 import { useGamification } from './composables/useGamification'
+import PWAInstallModal from './components/common/PWAInstallModal.vue'
+import PWAUpdateToast from './components/common/PWAUpdateToast.vue'
 
 const authStore = useAuthStore()
 const competencesStore = useCompetencesStore()
@@ -114,6 +127,17 @@ const chatStore = useChatStore()
 const notificationsStore = useNotificationsStore()
 const newsStore = useNewsStore()
 const { isOpen: sidebarIsOpen } = useSidebar()
+const isMobile = ref(false)
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768
+}
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
 const { loadHistory, cleanup: cleanupAICache } = useAICache()
 
 const { loadReviewRequests, cleanup: cleanupReviews } = useReviewRequests()

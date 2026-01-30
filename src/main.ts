@@ -7,6 +7,7 @@ import { firebaseApp } from './firebase/config'
 import { clickAway } from './directives/clickAway'
 import './assets/main.css'
 
+
 const app = createApp(App)
 
 app.use(createPinia())

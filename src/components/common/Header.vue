@@ -1,135 +1,82 @@
 <template>
-  <header class="h-16 theme-surface border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6">
-    <!-- Left Actions -->
-    <div class="flex items-center gap-4">
-      <!-- Activity History -->
-      <button
-        data-tour="history"
-        @click="$emit('toggle-history')"
-        class="p-2 hover:theme-bg rounded-lg transition text-gray-600 dark:text-gray-300"
-        title="Historique d'activité"
-      >
-        <i class="ph ph-clock-counter-clockwise text-xl"></i>
+  <header class="h-16 theme-surface border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 md:px-6">
+    <!-- Bouton hamburger mobile -->
+    <button class="md:hidden p-2 mr-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-600 dark:text-gray-300" @click="$emit('toggle-sidebar')" title="Menu">
+      <i class="ph ph-list text-2xl"></i>
+    </button>
+    <!-- Espace flexible pour pousser les icônes à droite -->
+    <div class="flex-1"></div>
+    <!-- Icône chat toujours visible à droite avec badge non lus -->
+    <div class="relative">
+      <button @click="$emit('toggle-chat')" class="p-2 hover:theme-bg rounded-lg transition text-gray-600 dark:text-gray-300 ml-2" title="Chat">
+        <i class="ph ph-chat-circle-dots text-xl"></i>
+        <span v-if="chatStore.unreadCount > 0" class="absolute -top-1 -right-1 w-5 h-5 bg-indigo-600 text-white text-xs rounded-full flex items-center justify-center border-2 border-white">
+          {{ chatStore.unreadCount > 9 ? '9+' : chatStore.unreadCount }}
+        </span>
       </button>
-
-      <!-- Page Title -->
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ pageTitle }}</h1>
     </div>
-
-    <!-- Actions -->
-    <div data-tour="header-actions" class="flex items-center gap-4">
-
-      <!-- Magic Import -->
-      <button
-        @click="$emit('toggle-magic-import')"
-        class="p-2 hover:theme-bg rounded-lg transition text-gray-600 dark:text-gray-300"
-        title="Import magique"
-      >
-        <i class="ph ph-magic-wand text-xl"></i>
-      </button>
-
-      <!-- Export -->
-      <button
-        @click="$emit('toggle-export')"
-        class="p-2 hover:theme-bg rounded-lg transition text-gray-600 dark:text-gray-300"
-        title="Exporter"
-      >
-        <i class="ph ph-export text-xl"></i>
-      </button>
-
-      <!-- Theme Selector -->
-      <div class="relative group">
-        <button
-          class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
-          title="Changer de thème"
-        >
-          <i class="ph ph-palette text-xl"></i>
-        </button>
-        <div class="absolute right-0 mt-2 w-48 theme-surface border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none group-hover:pointer-events-auto z-50">
-          <div class="p-2 space-y-1">
+    <!-- Actions dynamiques (desktop et mobile, sans doublon, tout via v-for) -->
+    <div class="flex items-center gap-2 md:gap-4">
+        <template v-for="action in visibleActions" :key="action.key">
+          <button
+            @click="action.handler()"
+            class="p-2 hover:theme-bg rounded-lg transition text-gray-600 dark:text-gray-300"
+            :title="action.label"
+          >
+            <i :class="action.icon + ' text-xl'"></i>
+            <!-- Badges pour notifications et reviews -->
+            <span v-if="action.key === 'notifications' && notificationsStore.unreadCount > 0" class="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+              {{ notificationsStore.unreadCount > 9 ? '9+' : notificationsStore.unreadCount }}
+            </span>
+            <span v-if="action.key === 'reviews' && reviewPendingCount > 0" class="absolute top-1 right-1 w-5 h-5 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center">
+              {{ reviewPendingCount }}
+            </span>
+            <span v-if="action.key === 'video' && videoActive" class="absolute top-1 right-1 flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+            </span>
+          </button>
+          <!-- Menu thème spécial -->
+          <div v-if="action.key === 'theme'" class="relative group">
             <button
-              v-for="themeOption in availableThemes"
-              :key="themeOption.name"
-              @click="theme.applyTheme(themeOption.name)"
-              class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2"
-              :class="{ 'bg-indigo-50 dark:bg-indigo-900': theme.currentTheme.value === themeOption.name }"
+              class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
+              title="Changer de thème"
             >
-              <div class="w-4 h-4 rounded" :style="{ backgroundColor: themeOption.primary }"></div>
-              <span>{{ themeOption.displayName }}</span>
-              <i v-if="theme.currentTheme.value === themeOption.name" class="ph ph-check ml-auto text-green-600"></i>
+              <i class="ph ph-palette text-xl"></i>
             </button>
+            <div class="absolute right-0 mt-2 w-48 theme-surface border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none group-hover:pointer-events-auto z-50">
+              <div class="p-2 space-y-1">
+                <button
+                  v-for="themeOption in availableThemes"
+                  :key="themeOption.name"
+                  @click="theme.applyTheme(themeOption.name)"
+                  class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2"
+                  :class="{ 'bg-indigo-50 dark:bg-indigo-900': theme.currentTheme.value === themeOption.name }"
+                >
+                  <div class="w-4 h-4 rounded" :style="{ backgroundColor: themeOption.primary }"></div>
+                  <span>{{ themeOption.displayName }}</span>
+                  <i v-if="theme.currentTheme.value === themeOption.name" class="ph ph-check ml-auto text-green-600"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </template>
+        <!-- Bouton overflow ... (toujours visible si overflowActions, mobile ou desktop) -->
+        <div v-if="overflowActions.length > 0" class="relative">
+          <button ref="overflowBtn" @click="toggleOverflow" class="p-2 hover:theme-bg rounded-lg transition text-gray-600 dark:text-gray-300" title="Plus d'actions">
+            <i class="ph ph-dots-three-outline text-xl"></i>
+          </button>
+          <div v-if="showOverflow" ref="overflowMenu" :style="overflowMenuStyle" class="absolute right-0 mt-2 w-48 theme-surface border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50">
+            <div class="p-2 space-y-1">
+              <button v-for="action in overflowActions" :key="action.key" @click="handleOverflowAction(action)" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2">
+                <i :class="action.icon + ' text-xl'"></i>
+                <span>{{ action.label }}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
-
-      <!-- Dark Mode Toggle -->
-      <button
-        @click="darkMode.toggle()"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
-        :title="darkMode.isDark.value ? 'Mode clair' : 'Mode sombre'"
-      >
-        <i class="ph text-xl" :class="darkMode.isDark.value ? 'ph-sun' : 'ph-moon'"></i>
-      </button>
-
-      <!-- Firebase Mode Toggle -->
-      <button
-        @click="toggleFirebaseMode()"
-        class="p-2 rounded-lg transition relative"
-        :class="view.firebaseMode === 'prod'
-          ? 'hover:bg-gray-100 dark:hover:bg-gray-700 text-blue-600 dark:text-blue-400'
-          : 'bg-orange-500 hover:bg-orange-600 text-white shadow-sm'"
-        :title="view.firebaseMode === 'prod' ? 'Basculer en mode démo' : 'Basculer en mode production'"
-      >
-        <i class="ph text-xl" :class="view.firebaseMode === 'prod' ? 'ph-database' : 'ph-flask'"></i>
-        <span v-if="view.firebaseMode === 'demo'" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-3 h-3 flex items-center justify-center font-bold">!</span>
-      </button>
-
-      <!-- Import JSON-LD -->
-      <button
-        @click="importJSONLD"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
-        title="Importer les données JSON-LD"
-      >
-        <i class="ph ph-file-arrow-up text-xl"></i>
-      </button>
-
-      <!-- Video Conference -->
-      <button
-        @click="$emit('toggle-video')"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition relative"
-        :class="videoActive ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-300'"
-        title="Visioconférence"
-      >
-        <i class="ph ph-video-camera text-xl"></i>
-        <span v-if="videoActive" class="absolute top-1 right-1 flex h-2.5 w-2.5">
-          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
-        </span>
-      </button>
-
-      <!-- Reviews -->
-      <button
-        @click="$emit('toggle-reviews')"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition relative text-gray-600 dark:text-gray-300"
-        title="Reviews"
-      >
-        <i class="ph ph-checks text-xl"></i>
-        <span v-if="reviewPendingCount > 0" class="absolute top-1 right-1 w-5 h-5 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center">
-          {{ reviewPendingCount }}
-        </span>
-      </button>
-
-      <!-- Chat Toggle -->
-      <button
-        @click="$emit('toggle-chat')"
-        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition relative text-gray-600 dark:text-gray-300"
-        title="Chat d'équipe"
-      >
-        <i class="ph ph-chat-circle-dots text-xl"></i>
-        <span v-if="chatStore.unreadCount > 0" class="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-          {{ chatStore.unreadCount }}
-        </span>
-      </button>
+      <!-- Toutes les actions dynamiques sont gérées par le v-for ci-dessus. -->
 
       <!-- Notifications -->
       <div data-tour="notifications" class="relative">
@@ -333,11 +280,131 @@
           </div>
         </div>
       </div>
-    </div>
   </header>
 </template>
 
 <script setup lang="ts">
+import { useChatStore } from '@/stores/chat'
+import { onMounted, onBeforeUnmount, nextTick } from 'vue'
+const showOverflow = ref(false)
+const themeSelector = ref(false)
+const overflowBtn = ref<HTMLElement | null>(null)
+const overflowMenu = ref<HTMLElement | null>(null)
+const overflowMenuStyle = ref({ right: '0', top: '2.5rem', width: '10rem' })
+
+const emit = defineEmits<{
+  (e: 'toggle-chat'): void
+  (e: 'toggle-video'): void
+  (e: 'toggle-history'): void
+  (e: 'toggle-magic-import'): void
+  (e: 'toggle-export'): void
+  (e: 'toggle-referential'): void
+  (e: 'toggle-reviews'): void
+  (e: 'toggle-sidebar'): void
+}>()
+
+// Toutes les actions à répartir dynamiquement (hors chat)
+const dynamicActions = [
+  { key: 'magic-import', label: 'Import magique', icon: 'ph ph-magic-wand', handler: () => emit('toggle-magic-import') },
+  { key: 'export', label: 'Exporter', icon: 'ph ph-export', handler: () => emit('toggle-export') },
+  { key: 'theme', label: 'Thème', icon: 'ph ph-palette', handler: () => themeSelector.value = !themeSelector.value },
+  { key: 'video', label: 'Visioconférence', icon: 'ph ph-video-camera', handler: () => emit('toggle-video') },
+  { key: 'reviews', label: 'Reviews', icon: 'ph ph-checks', handler: () => emit('toggle-reviews') },
+  { key: 'notifications', label: 'Notifications', icon: 'ph ph-bell', handler: () => showNotifications.value = !showNotifications.value },
+  { key: 'import-jsonld', label: 'Importer JSON-LD', icon: 'ph ph-file-arrow-up', handler: () => importJSONLD() },
+  { key: 'firebase-mode', label: 'Basculer Firebase', icon: 'ph ph-database', handler: () => toggleFirebaseMode() },
+  { key: 'dark-mode', label: 'Mode sombre', icon: 'ph ph-moon', handler: () => darkMode.toggle() }
+]
+
+const visibleActions = ref([] as typeof dynamicActions)
+const overflowActions = ref([] as typeof dynamicActions)
+
+function updateOverflowActions() {
+  // Largeur max forcée à 44px pour test : tout va dans le menu overflow
+  const maxWidth = 44
+  let used = 0
+  const actionWidths = [44, 44, 44, 44, 44, 44, 44, 44, 44]
+  visibleActions.value = []
+  overflowActions.value = []
+  for (let i = 0; i < dynamicActions.length; i++) {
+    if (used + actionWidths[i] <= maxWidth) {
+      visibleActions.value.push(dynamicActions[i])
+      used += actionWidths[i]
+    } else {
+      overflowActions.value.push(dynamicActions[i])
+    }
+  }
+  // DEBUG : forcer l'affichage du bouton overflow même si aucune action n'est overflow
+  if (overflowActions.value.length === 0 && dynamicActions.length > 0) {
+    overflowActions.value.push(dynamicActions[dynamicActions.length - 1])
+    visibleActions.value.pop()
+  }
+}
+
+// Toujours mettre à jour lors du resize et au montage
+onMounted(() => {
+  updateOverflowActions()
+  window.addEventListener('resize', updateOverflowActions)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateOverflowActions)
+})
+
+// Watcher pour forcer la mise à jour si la taille de la fenêtre change (sécurité)
+watch(() => window.innerWidth, () => {
+  updateOverflowActions()
+})
+
+function handleOverflowAction(action: any) {
+  if (action.key === 'theme') {
+    themeSelector.value = !themeSelector.value
+  } else {
+    action.handler()
+    showOverflow.value = false
+  }
+}
+
+function toggleOverflow() {
+  showOverflow.value = !showOverflow.value
+  if (showOverflow.value) {
+    nextTick(() => {
+      positionOverflowMenu()
+    })
+  }
+}
+
+function positionOverflowMenu() {
+  if (!overflowBtn.value || !overflowMenu.value) return
+  const btnRect = overflowBtn.value.getBoundingClientRect()
+  overflowMenuStyle.value = {
+    right: '0',
+    top: `${btnRect.height + 8}px`,
+    width: '10rem'
+  }
+}
+
+function handleClickOutside(event: MouseEvent) {
+  if (
+    showOverflow.value &&
+    overflowMenu.value &&
+    !overflowMenu.value.contains(event.target as Node) &&
+    overflowBtn.value &&
+    !overflowBtn.value.contains(event.target as Node)
+  ) {
+    showOverflow.value = false
+    themeSelector.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+  updateOverflowActions()
+  window.addEventListener('resize', updateOverflowActions)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('resize', updateOverflowActions)
+})
 import { storeToRefs } from 'pinia'
 import { useExtendedGamificationStore } from '@/stores/extendedGamification'
 
@@ -376,15 +443,6 @@ const restartTour = () => {
   showSettings.value = false
 }
 
-defineEmits<{
-  'toggle-chat': []
-  'toggle-video': []
-  'toggle-history': []
-  'toggle-magic-import': []
-  'toggle-export': []
-  'toggle-referential': []
-  'toggle-reviews': []
-}>()
 
 const route = useRoute()
 const authStore = useAuthStore()

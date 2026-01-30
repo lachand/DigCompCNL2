@@ -62,6 +62,18 @@ export const useChatStore = defineStore('chat', () => {
             `${latestMsg.sender}: ${latestMsg.text.substring(0, 50)}...`,
             () => window.focus()
           )
+
+          // Envoi notification OneSignal locale si non lus
+          // Notification locale via API Web Notifications
+          if ('Notification' in window && Notification.permission === 'granted' && unreadCount.value > 0) {
+            new Notification(`Nouveau message de ${latestMsg.sender}`,
+              {
+                body: latestMsg.text.substring(0, 80),
+                icon: '/icons/icon-192x192.png',
+                data: { url: window.location.href }
+              }
+            )
+          }
         }
       }
     })

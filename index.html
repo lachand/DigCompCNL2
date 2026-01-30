@@ -6,6 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>DigComp 3.0 - Dashboard & Pilotage</title>
 
+    <!-- OneSignal v16 SDK (chargé en premier, sans defer) -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+          appId: "f8017e38-ae66-4868-af5d-4d46e2334503",
+        });
+      });
+    </script>
+
     <!-- Jitsi Meet -->
     <script src="https://8x8.vc/vpaas-magic-cookie-6d9b644a44dd43169d30c23ee93d243e/external_api.js" async></script>
 
@@ -13,7 +24,15 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <div id="splash-screen">
+      <iframe src="/splash.html" style="border:none;width:100vw;height:100vh;display:block;"></iframe>
+    </div>
+    <div id="app" style="display:none;"></div>
+    <script type="module">
+      import('/src/main.ts').then(() => {
+        document.getElementById('splash-screen').style.display = 'none';
+        document.getElementById('app').style.display = '';
+      });
+    </script>
   </body>
 </html>

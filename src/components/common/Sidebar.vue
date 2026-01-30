@@ -2,7 +2,8 @@
   <aside
     data-tour="sidebar"
     class="fixed left-0 top-0 h-screen theme-surface border-r border-gray-200 dark:border-gray-700 transition-all duration-300 z-40"
-    :class="isOpen ? 'w-64' : 'w-20'"
+    :class="[isOpen ? 'w-64' : 'w-0 md:w-20', isMobile && !isOpen ? 'pointer-events-none opacity-0' : '']"
+    v-show="isOpen || !isMobile"
   >
     <!-- Logo & Toggle -->
     <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 theme-bg">
@@ -143,7 +144,7 @@
   <!-- Mobile Overlay -->
   <div
     v-if="isOpen && isMobile"
-    @click="closeSidebar"
+    @click="$emit('close-sidebar')"
     class="fixed inset-0 bg-black/50 z-30 md:hidden"
   ></div>
 </template>
@@ -170,7 +171,15 @@ const route = useRoute()
 const authStore = useAuthStore()
 const chatStore = useChatStore()
 const competencesStore = useCompetencesStore()
-const { isOpen, toggle } = useSidebar()
+const props = defineProps<{ isOpen: boolean }>()
+const emit = defineEmits(['close-sidebar'])
+const isOpenLocal = ref(true)
+const isOpen = computed(() => {
+  // Sur mobile, on suit le prop parent
+  if (isMobile.value) return props.isOpen
+  // Sur desktop, on gère localement
+  return isOpenLocal.value
+})
 const { view } = useUserPreferences()
 
 const isMobile = ref(false)
@@ -255,14 +264,14 @@ const toggleDomain = (domainId: string) => {
 }
 
 const toggleSidebar = () => {
-  toggle()
-}
-
-const closeSidebar = () => {
   if (isMobile.value) {
-    isOpen.value = false
+    emit('close-sidebar')
+  } else {
+    isOpenLocal.value = !isOpenLocal.value
   }
 }
+
+
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 768

@@ -1,0 +1,169 @@
+  // Runtime caching pour images et assets statiques
+  workbox.registerRoute(
+    ({ request }) => request.destination === 'image',
+    new workbox.CacheFirst({
+      cacheName: 'images-cache',
+      plugins: [
+        new workbox.ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: 30 * 24 * 60 * 60 })
+      ]
+    })
+  )
+
+  // Runtime caching pour fichiers statiques (css, js, fonts)
+  workbox.registerRoute(
+    ({ request }) => ['style', 'script', 'font'].includes(request.destination),
+    new workbox.StaleWhileRevalidate({
+      cacheName: 'static-resources',
+    })
+  )
+
+  // Runtime caching pour API (hors Firestore)
+  workbox.registerRoute(
+    ({ url }) => url.origin.includes('api.') && !url.href.includes('firestore.googleapis.com'),
+    new workbox.NetworkFirst({
+      cacheName: 'api-cache',
+      networkTimeoutSeconds: 5,
+      plugins: [
+        new workbox.ExpirationPlugin({ maxEntries: 30, maxAgeSeconds: 7 * 24 * 60 * 60 })
+      ]
+    })
+  )
+/**
+ * Copyright 2018 Google Inc. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// If the loader is already loaded, just stop.
+if (!self.define) {
+  let registry = {};
+
+  // Used for `eval` and `importScripts` where we can't get script URL by other means.
+  // In both cases, it's safe to use a global var because those functions are synchronous.
+  let nextDefineUri;
+
+  const singleRequire = (uri, parentUri) => {
+    uri = new URL(uri + ".js", parentUri).href;
+    return registry[uri] || (
+      
+        new Promise(resolve => {
+          if ("document" in self) {
+            const script = document.createElement("script");
+            script.src = uri;
+            script.onload = resolve;
+            document.head.appendChild(script);
+          } else {
+            nextDefineUri = uri;
+            importScripts(uri);
+            resolve();
+          }
+        })
+      
+      .then(() => {
+        let promise = registry[uri];
+        if (!promise) {
+          throw new Error(`Module ${uri} didn’t register its module`);
+        }
+        return promise;
+      })
+    );
+  };
+
+  self.define = (depsNames, factory) => {
+    const uri = nextDefineUri || ("document" in self ? document.currentScript.src : "") || location.href;
+    if (registry[uri]) {
+      // Module is already loading or loaded.
+      return;
+    }
+    let exports = {};
+    const require = depUri => singleRequire(depUri, uri);
+    const specialDeps = {
+      module: { uri },
+      exports,
+      require
+    };
+    registry[uri] = Promise.all(depsNames.map(
+      depName => specialDeps[depName] || require(depName)
+    )).then(deps => {
+      factory(...deps);
+      return exports;
+    });
+  };
+}
+define(['./workbox-c5fd805d'], (function (workbox) { 'use strict';
+
+  self.skipWaiting();
+  workbox.clientsClaim();
+
+  /**
+   * The precacheAndRoute() method efficiently caches and responds to
+   * requests for URLs in the manifest.
+   * See https://goo.gl/S9QRab
+   */
+  workbox.precacheAndRoute([{
+    "url": "registerSW.js",
+    "revision": "3ca0b8505b4bec776b69afdba2768812"
+  }, {
+    "url": "index.html",
+    "revision": "0.tlvcfviq35g"
+  }], {});
+  workbox.cleanupOutdatedCaches();
+  workbox.registerRoute(new workbox.NavigationRoute(async ({ event }) => {
+    try {
+      return await workbox.createHandlerBoundToURL("index.html")({ event })
+    } catch (err) {
+      return fetch('/offline.html')
+    }
+  }, {
+    allowlist: [/^\/$/]
+  }))
+
+  // Gestion propre des requêtes Firestore interceptées
+  self.addEventListener('fetch', event => {
+    const url = event.request.url
+    if (url.includes('firestore.googleapis.com')) {
+      event.respondWith(new Response(JSON.stringify({
+        error: 'Firestore requests should not be cached by the service worker.'
+      }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' }
+      }))
+    }
+  })
+
+  // Gestion des notifications push natives
+  self.addEventListener('push', function(event) {
+    let data = {}
+    if (event.data) {
+      data = event.data.json()
+    }
+    const title = data.title || 'Notification'
+    const options = {
+      body: data.body || '',
+      icon: data.icon || '/public/icons/icon-192x192.png',
+      data: data
+    }
+    event.waitUntil(self.registration.showNotification(title, options))
+  })
+
+  self.addEventListener('notificationclick', function(event) {
+    event.notification.close()
+    event.waitUntil(
+      clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+        if (clientList.length > 0) {
+          let client = clientList[0]
+          return client.focus()
+        }
+        return clients.openWindow('/')
+      })
+    )
+  })
+
+}));
