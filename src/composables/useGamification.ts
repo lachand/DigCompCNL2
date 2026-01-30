@@ -10,9 +10,9 @@ import {
   Unsubscribe
 } from 'firebase/firestore'
 import { db } from '@/firebase/config'
+import { useExtendedGamificationStore } from '@/stores/extendedGamification'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from './useToast'
-import type { Badge, UserStats } from '@/types'
 
 // Badge definitions
 export const BADGE_DEFINITIONS: Badge[] = [
@@ -172,6 +172,7 @@ export function useGamification() {
 
   const recordAction = async (type: 'statusChange' | 'validation' | 'review' | 'comment' | 'resource') => {
     const authStore = useAuthStore()
+    const extendedGamification = useExtendedGamificationStore()
     const email = authStore.currentUser?.email
     if (!email || !userStats.value) return
 
@@ -190,6 +191,9 @@ export function useGamification() {
       resource: 'resources'
     }
     stats.actionCounts[countKey[type]]++
+
+    // Update extended gamification quests
+    await extendedGamification.updateQuestProgress(type)
 
     // Update streak
     if (stats.lastActivityDate !== today) {

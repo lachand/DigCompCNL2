@@ -1,5 +1,12 @@
 [
   {
+    "id": "gamification-extended-launch",
+    "title": "🎉 Nouvelle Gamification Étendue Disponible !",
+    "content": "<p>Nous sommes ravis de vous annoncer le lancement de notre <strong>système de gamification étendue</strong> ! Cette nouvelle fonctionnalité transforme votre expérience d'apprentissage en une aventure passionnante.</p><h3>🛡️ Quêtes Dynamiques</h3><p>Relevez des quêtes personnalisées basées sur vos actions quotidiennes. Complétez des objectifs comme :</p><ul><li>Créer vos premiers objectifs d'apprentissage</li><li>Collaborer avec d'autres utilisateurs</li><li>Atteindre des jalons dans vos compétences</li></ul><p>Chaque quête accomplie vous rapporte des points et des récompenses !</p><h3>🏆 Défis Communautaires</h3><p>Participez à des défis collectifs avec la communauté. Rejoignez des challenges thématiques et progressez ensemble vers des objectifs communs.</p><h3>🛒 Boutique Interne</h3><p>Dépensez vos points gagnés dans notre boutique pour personnaliser votre expérience :</p><ul><li>Nouveaux avatars et thèmes</li><li>Badges exclusifs</li><li>Options de personnalisation avancées</li></ul><p>Accédez à la gamification étendue via le menu latéral (icône 🏆) ou directement sur la page Gamification.</p><p>Commencez dès maintenant à gagner des points et à personnaliser votre parcours d'apprentissage ! 🚀</p>",
+    "date": 1769731200000,
+    "isActive": true
+  },
+  {
     "id": "demo-base-announcement",
     "title": "Découvrez la base de démonstration !",
     "content": "<p>Une nouvelle base de démonstration est maintenant disponible pour vous permettre de découvrir toutes les fonctionnalités de l'application.</p><p>Cette base contient des exemples de compétences, d'objectifs d'apprentissage et de données pour vous aider à comprendre comment utiliser l'outil.</p><p>Pour accéder à la base démo, changez de mode dans vos préférences utilisateur (icône en haut à droite > Préférences > Mode Firebase > {ICON}Démo).</p><p>Profitez-en pour explorer l'interface et tester les différentes fonctionnalités !</p>",

@@ -14,7 +14,9 @@
     "import-news": "node scripts/import-news.js prod",
     "import-news-demo": "node scripts/import-news.js demo",
     "import-news-force": "node scripts/import-news.js prod --force",
-    "import-news-demo-force": "node scripts/import-news.js demo --force"
+    "import-news-demo-force": "node scripts/import-news.js demo --force",
+    "init-extended-gamification": "node scripts/init-extended-gamification.js prod",
+    "init-extended-gamification-demo": "node scripts/init-extended-gamification.js demo"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",

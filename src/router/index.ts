@@ -70,6 +70,11 @@ const router = createRouter({
       path: '/calendar',
       name: 'calendar',
       component: () => import('@/views/CalendarView.vue')
+    },
+    {
+      path: '/gamification',
+      name: 'gamification',
+      component: () => import('@/views/GamificationView.vue')
     }
   ]
 })
