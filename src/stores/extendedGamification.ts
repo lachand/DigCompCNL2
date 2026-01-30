@@ -433,6 +433,11 @@ export const useExtendedGamificationStore = defineStore('extendedGamification', 
     }
   }
 
+  // Initialize the store
+  const init = () => {
+    initializeListeners()
+  }
+
   return {
     // State
     quests,
@@ -450,6 +455,7 @@ export const useExtendedGamificationStore = defineStore('extendedGamification', 
     availableShopItems,
 
     // Actions
+    init,
     initializeListeners,
     cleanup,
     updateQuestProgress,

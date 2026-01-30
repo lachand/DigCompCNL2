@@ -201,6 +201,7 @@ const bottomMenuItems = computed(() => [
   { path: '/kanban', label: 'Kanban', icon: 'ph-kanban' },
   { path: '/calendar', label: 'Calendrier', icon: 'ph-calendar' },
   { path: '/gamification', label: 'Quêtes & Défis', icon: 'ph-trophy' },
+  { path: '/games', label: 'Mini-jeux', icon: 'ph-game-controller' },
   { path: '/comparison', label: 'Comparaison', icon: 'ph-columns' },
   { path: '/statistics', label: 'Statistiques', icon: 'ph-chart-bar' }
 ])

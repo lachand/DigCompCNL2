@@ -221,6 +221,24 @@
               <p v-else-if="apiKeyStatus === 'valid'" class="text-xs text-green-500 mt-1">Clé API valide</p>
             </div>
 
+            <!-- Push Notifications -->
+            <div>
+              <button
+                @click="showNotificationSettings = !showNotificationSettings"
+                class="w-full flex items-center justify-between py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition"
+              >
+                <span class="flex items-center gap-2">
+                  <i class="ph ph-bell"></i>
+                  Notifications Push
+                </span>
+                <i class="ph ph-caret-down" :class="{ 'rotate-180': showNotificationSettings }"></i>
+              </button>
+              
+              <div v-if="showNotificationSettings" class="mt-2 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                <NotificationSettings />
+              </div>
+            </div>
+
             <!-- AI Model Selection -->
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -286,8 +304,11 @@
 <script setup lang="ts">
 import { useChatStore } from '@/stores/chat'
 import { onMounted, onBeforeUnmount, nextTick } from 'vue'
+import NotificationSettings from '@/components/common/NotificationSettings.vue'
+
 const showOverflow = ref(false)
 const themeSelector = ref(false)
+const showNotificationSettings = ref(false)
 const overflowBtn = ref<HTMLElement | null>(null)
 const overflowMenu = ref<HTMLElement | null>(null)
 const overflowMenuStyle = ref({ right: '0', top: '2.5rem', width: '10rem' })

@@ -1,5 +1,16 @@
 <template>
   <div class="space-y-6 theme-bg">
+    <!-- Back Button (only when used in games view) -->
+    <div v-if="showBackButton" class="mb-6">
+      <button
+        @click="$emit('back-to-menu')"
+        class="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+      >
+        <i class="ph ph-arrow-left"></i>
+        <span>Retour au menu</span>
+      </button>
+    </div>
+
     <!-- Header -->
     <div class="flex items-center justify-between theme-surface">
       <div>
@@ -248,6 +259,16 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useExtendedGamificationStore } from '@/stores/extendedGamification'
 import { useAuthStore } from '@/stores/auth'
+
+// Props
+const props = defineProps<{
+  showBackButton?: boolean
+}>()
+
+// Emits
+defineEmits<{
+  (e: 'back-to-menu'): void
+}>()
 
 const authStore = useAuthStore()
 const store = useExtendedGamificationStore()
