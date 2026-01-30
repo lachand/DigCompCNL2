@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 import { useAuthStore } from './auth'
+import { createDelayedListener, getOptimizedDelay, logOptimization } from '@/composables/useOptimizedDelays'
 
 export interface Notification {
   id?: string
@@ -67,24 +68,33 @@ export const useNotificationsStore = defineStore('notifications', () => {
       }
 
       try {
-        const q = query(
-          collection(db, 'notifications'),
-          where('targetUser', '==', authStore.currentUser.email),
-          limit(100)
-        )
+        const delay = getOptimizedDelay('USER_NOTIFICATIONS')
+        logOptimization('User Notifications', delay)
+        
+        const fetchNotifications = () => {
+          const q = query(
+            collection(db, 'notifications'),
+            where('targetUser', '==', authStore.currentUser.email),
+            limit(100)
+          )
 
-        unsubscribe = onSnapshot(q, (snapshot) => {
-          notifications.value = snapshot.docs.map(doc => {
-            const data = doc.data()
-            return {
-              id: doc.id,
-              ...data,
-              createdAt: typeof data.createdAt === 'number' ? data.createdAt : (data.createdAt?.toMillis?.() || Date.now())
-            } as Notification
-          })
+          unsubscribe = onSnapshot(q, (snapshot) => {
+            notifications.value = snapshot.docs.map(doc => {
+              const data = doc.data()
+              return {
+                id: doc.id,
+                ...data,
+                createdAt: typeof data.createdAt === 'number' ? data.createdAt : (data.createdAt?.toMillis?.() || Date.now())
+              } as Notification
+            })
         }, (err) => {
           console.error('Error loading notifications:', err)
         })
+      }
+      
+      // Utiliser le listener avec délai de 10s pour les notifications
+      const cleanup = createDelayedListener(fetchNotifications, delay, true)
+      unsubscribe = cleanup
       } catch (err) {
         console.error('Error setting up notifications listener:', err)
       }

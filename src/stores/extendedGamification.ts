@@ -1,31 +1,3 @@
-  // Bonus state
-  const activeBonuses = ref<{ xpMultiplier?: number; protection?: boolean }>({})
-
-  /**
-   * Active a bonus item (xp multiplier, protection, etc.)
-   */
-  const activateBonus = async (itemId: string) => {
-    if (!userInventory.value) return
-    // Find the first unused item in inventory
-    const idx = userInventory.value.items.findIndex(i => i.itemId === itemId && !i.equipped)
-    if (idx === -1) {
-      error('Aucun bonus disponible à activer !')
-      return
-    }
-    // Mark as equipped
-    userInventory.value.items[idx].equipped = true
-    await updateDoc(doc(db, 'userInventories', userInventory.value.userId), {
-      items: userInventory.value.items
-    })
-    // Set local effect
-    if (itemId.includes('xp') || itemId.includes('multiplier')) {
-      activeBonuses.value.xpMultiplier = 2 // ou lire la valeur du shopItem si besoin
-      success('Multiplicateur d\'XP activé pour la prochaine récompense !')
-    } else if (itemId.includes('protection')) {
-      activeBonuses.value.protection = true
-      success('Protection activée pour la prochaine pénalité !')
-    }
-  }
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
@@ -42,6 +14,7 @@ import {
 import { db } from '@/firebase/config'
 import { useAuthStore } from './auth'
 import { useToast } from '@/composables/useToast'
+import { createDelayedListener, getOptimizedDelay, logOptimization } from '@/composables/useOptimizedDelays'
 
 export interface Quest {
   id: string
@@ -175,85 +148,124 @@ export const useExtendedGamificationStore = defineStore('extendedGamification', 
   const initializeListeners = () => {
     if (!authStore.currentUser) return
 
-    // Quests listener
+    const delay = getOptimizedDelay('GAMIFICATION')
+    logOptimization('Extended Gamification', delay)
+
+    // Quests listener avec délai
     if (!questsUnsubscribe) {
       const questsQuery = query(
         collection(db, 'quests'),
         where('isActive', '==', true),
         orderBy('startDate', 'desc')
       )
-      questsUnsubscribe = onSnapshot(questsQuery, (snapshot) => {
-        quests.value = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Quest[]
-      })
+      
+      const fetchQuests = () => {
+        questsUnsubscribe = onSnapshot(questsQuery, (snapshot) => {
+          quests.value = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Quest[]
+        })
+      }
+      
+      const questsCleanup = createDelayedListener(fetchQuests, delay, true)
+      questsUnsubscribe = questsCleanup
     }
 
-    // User quests listener
+    // User quests listener avec délai plus court (plus important pour l'utilisateur)
     if (!userQuestsUnsubscribe) {
       const userQuestsQuery = query(
         collection(db, 'userQuests'),
         where('userId', '==', authStore.currentUser!.uid)
       )
-      userQuestsUnsubscribe = onSnapshot(userQuestsQuery, (snapshot) => {
-        userQuests.value = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as UserQuest[]
-      })
+      
+      const fetchUserQuests = () => {
+        userQuestsUnsubscribe = onSnapshot(userQuestsQuery, (snapshot) => {
+          userQuests.value = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as UserQuest[]
+        })
+      }
+      
+      // Délai plus court pour les quêtes de l'utilisateur
+      const userQuestsDelay = Math.max(5000, delay / 3)
+      const userQuestsCleanup = createDelayedListener(fetchUserQuests, userQuestsDelay, true)
+      userQuestsUnsubscribe = userQuestsCleanup
     }
 
-    // Challenges listener
+    // Challenges listener avec délai
     if (!challengesUnsubscribe) {
       const challengesQuery = query(
         collection(db, 'challenges'),
         where('isActive', '==', true),
         orderBy('startDate', 'desc')
       )
-      challengesUnsubscribe = onSnapshot(challengesQuery, (snapshot) => {
-        challenges.value = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Challenge[]
-      })
+      
+      const fetchChallenges = () => {
+        challengesUnsubscribe = onSnapshot(challengesQuery, (snapshot) => {
+          challenges.value = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Challenge[]
+        })
+      }
+      
+      const challengesCleanup = createDelayedListener(fetchChallenges, delay, true)
+      challengesUnsubscribe = challengesCleanup
     }
 
-    // Shop items listener
+    // Shop items listener avec délai plus long (moins critique)
     if (!shopUnsubscribe) {
       const shopQuery = query(
         collection(db, 'shopItems'),
         where('isActive', '==', true),
         orderBy('category')
       )
-      shopUnsubscribe = onSnapshot(shopQuery, (snapshot) => {
-        shopItems.value = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as ShopItem[]
-      })
+      
+      const fetchShop = () => {
+        shopUnsubscribe = onSnapshot(shopQuery, (snapshot) => {
+          shopItems.value = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as ShopItem[]
+        })
+      }
+      
+      // Délai plus long pour les objets de boutique
+      const shopDelay = delay * 2
+      const shopCleanup = createDelayedListener(fetchShop, shopDelay, true)
+      shopUnsubscribe = shopCleanup
     }
 
-    // User inventory listener
+    // User inventory listener avec délai court (plus important)
     if (!inventoryUnsubscribe) {
       const inventoryRef = doc(db, 'userInventories', authStore.currentUser!.uid)
-      inventoryUnsubscribe = onSnapshot(inventoryRef, async (docSnap) => {
-        if (docSnap.exists()) {
-          userInventory.value = {
-            userId: docSnap.id,
-            ...docSnap.data()
-          } as UserInventory
-        } else {
-          // Initialize empty inventory in Firestore
-          const newInventory = {
-            userId: authStore.currentUser!.uid,
-            items: [],
-            currency: { points: 0 }
+      
+      const fetchInventory = async () => {
+        inventoryUnsubscribe = onSnapshot(inventoryRef, async (docSnap) => {
+          if (docSnap.exists()) {
+            userInventory.value = {
+              userId: docSnap.id,
+              ...docSnap.data()
+            } as UserInventory
+          } else {
+            // Initialize empty inventory in Firestore
+            const newInventory = {
+              userId: authStore.currentUser!.uid,
+              items: [],
+              currency: { points: 0 }
+            }
+            await setDoc(inventoryRef, newInventory)
+            userInventory.value = newInventory as UserInventory
           }
-          await setDoc(inventoryRef, newInventory)
-          userInventory.value = newInventory as UserInventory
-        }
-      })
+        })
+      }
+      
+      // Délai plus court pour l'inventaire (plus important pour l'utilisateur)
+      const inventoryDelay = Math.max(5000, delay / 3)
+      const inventoryCleanup = createDelayedListener(fetchInventory, inventoryDelay, true)
+      inventoryUnsubscribe = inventoryCleanup
     }
   }
 
@@ -430,6 +442,35 @@ export const useExtendedGamificationStore = defineStore('extendedGamification', 
       success('Quête commencée !')
     } catch (err) {
       console.error('Erreur lors du démarrage de la quête:', err)
+    }
+  }
+
+  // Bonus state
+  const activeBonuses = ref<{ xpMultiplier?: number; protection?: boolean }>({})
+
+  /**
+   * Active a bonus item (xp multiplier, protection, etc.)
+   */
+  const activateBonus = async (itemId: string) => {
+    if (!userInventory.value) return
+    // Find the first unused item in inventory
+    const idx = userInventory.value.items.findIndex(i => i.itemId === itemId && !i.equipped)
+    if (idx === -1) {
+      error('Aucun bonus disponible à activer !')
+      return
+    }
+    // Mark as equipped
+    userInventory.value.items[idx].equipped = true
+    await updateDoc(doc(db, 'userInventories', userInventory.value.userId), {
+      items: userInventory.value.items
+    })
+    // Set local effect
+    if (itemId.includes('xp') || itemId.includes('multiplier')) {
+      activeBonuses.value.xpMultiplier = 2 // ou lire la valeur du shopItem si besoin
+      success('Multiplicateur d\'XP activé pour la prochaine récompense !')
+    } else if (itemId.includes('protection')) {
+      activeBonuses.value.protection = true
+      success('Protection activée pour la prochaine pénalité !')
     }
   }
 

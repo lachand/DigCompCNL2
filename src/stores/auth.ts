@@ -23,6 +23,7 @@ import {
 import { auth, db } from '@/firebase/config'
 import type { User, ExternalMember } from '@/types'
 import { getUserColor } from '@/utils/helpers'
+import { createDelayedListener, getOptimizedDelay, logOptimization } from '@/composables/useOptimizedDelays'
 
 export const useAuthStore = defineStore('auth', () => {
   const currentUser = ref<FirebaseUser | null>(null)
@@ -182,7 +183,7 @@ export const useAuthStore = defineStore('auth', () => {
           { merge: true }
         )
 
-        // Listen to user data
+        // Listen to user data (garder temps réel pour l'utilisateur actuel)
         onSnapshot(userRef, (snapshot) => {
           if (snapshot.exists()) {
             userData.value = snapshot.data() as User
@@ -193,15 +194,29 @@ export const useAuthStore = defineStore('auth', () => {
         startHeartbeat()
         updateUserPresence()
 
-        // Listen to all users
-        usersUnsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
-          users.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User))
-        })
+        // Listen to all users avec délai
+        const delay = getOptimizedDelay('USER_LIST')
+        logOptimization('Users List', delay)
+        
+        const fetchUsers = () => {
+          usersUnsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+            users.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User))
+          })
+        }
+        
+        const usersCleanup = createDelayedListener(fetchUsers, delay, true)
+        usersUnsubscribe = usersCleanup
 
-        // Listen to external members
-        externalMembersUnsubscribe = onSnapshot(collection(db, 'external_members'), (snapshot) => {
-          externalMembers.value = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ExternalMember))
-        })
+        // Listen to external members avec délai plus long
+        const fetchExternalMembers = () => {
+          externalMembersUnsubscribe = onSnapshot(collection(db, 'external_members'), (snapshot) => {
+            externalMembers.value = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ExternalMember))
+          })
+        }
+        
+        const externalDelay = delay * 2 // Délai plus long pour les membres externes
+        const externalCleanup = createDelayedListener(fetchExternalMembers, externalDelay, true)
+        externalMembersUnsubscribe = externalCleanup
       } else {
         userData.value = null
         users.value = []

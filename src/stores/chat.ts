@@ -17,6 +17,7 @@ import { db } from '@/firebase/config'
 import type { ChatMessage } from '@/types'
 import { useAuthStore } from './auth'
 import { playSound, showDesktopNotification } from '@/utils/helpers'
+import { createDelayedListener, getOptimizedDelay, logOptimization } from '@/composables/useOptimizedDelays'
 
 export const useChatStore = defineStore('chat', () => {
   const messages = ref<ChatMessage[]>([])
@@ -33,19 +34,23 @@ export const useChatStore = defineStore('chat', () => {
   })
 
   const loadMessages = () => {
-    const q = query(collection(db, 'messages'), orderBy('timestamp', 'asc'))
+    const delay = getOptimizedDelay('CHAT_MESSAGES')
+    logOptimization('Chat Messages', delay)
+    
+    const fetchMessages = () => {
+      const q = query(collection(db, 'messages'), orderBy('timestamp', 'asc'))
 
-    messagesUnsubscribe = onSnapshot(q, (snapshot) => {
-      const authStore = useAuthStore()
-      const previousLength = messages.value.length
+      messagesUnsubscribe = onSnapshot(q, (snapshot) => {
+        const authStore = useAuthStore()
+        const previousLength = messages.value.length
 
-      messages.value = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as ChatMessage))
+        messages.value = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as ChatMessage))
 
-      // Calculate unread
-      unreadCount.value = messages.value.filter(m => m.timestamp > lastReadTime.value).length
+        // Calculate unread
+        unreadCount.value = messages.value.filter(m => m.timestamp > lastReadTime.value).length
 
       // Notify on new message (if not from current user and chat is closed or tab not focused)
       if (messages.value.length > previousLength) {
@@ -77,6 +82,11 @@ export const useChatStore = defineStore('chat', () => {
         }
       }
     })
+    }
+    
+    // Utiliser le listener avec délai de 2s pour le chat
+    const cleanup = createDelayedListener(fetchMessages, delay, true)
+    messagesUnsubscribe = cleanup
 
     // Cleanup old messages (>30 days)
     cleanupOldMessages()

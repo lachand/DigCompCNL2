@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 import { useAuthStore } from './auth'
+import { createDelayedListener, getOptimizedDelay, logOptimization } from '@/composables/useOptimizedDelays'
 
 export interface NewsItem {
   id: string
@@ -41,29 +42,46 @@ export const useNewsStore = defineStore('news', () => {
   const initializeNews = () => {
     if (newsUnsubscribe) return
 
-    // Écouter les nouveautés actives
+    // Écouter les nouveautés actives - chargement unique au démarrage
     const newsQuery = query(
       collection(db, 'news'),
       where('isActive', '==', true),
       orderBy('date', 'desc')
     )
 
+    logOptimization('News', 'Chargement unique au démarrage')
+    
+    // Charger une seule fois au démarrage, pas de polling
     newsUnsubscribe = onSnapshot(newsQuery, (snapshot) => {
       news.value = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as NewsItem[]
+      
+      // Se désabonner immédiatement après le premier chargement
+      if (newsUnsubscribe) {
+        newsUnsubscribe()
+        newsUnsubscribe = null
+      }
     })
   }
 
   const initializeUserReadNews = () => {
     if (!authStore.currentUser || userReadUnsubscribe) return
 
-    // Écouter les nouveautés lues par l'utilisateur
-    const userReadRef = doc(db, 'users', authStore.currentUser.uid)
+    logOptimization('User Read News', 'Chargement unique au démarrage')
+    
+    // Charger une seule fois les news lues par l'utilisateur
+    const userReadRef = doc(db, 'users', authStore.currentUser!.uid)
     userReadUnsubscribe = onSnapshot(userReadRef, (doc) => {
       const data = doc.data()
       userReadNews.value = data?.readNews || []
+      
+      // Se désabonner après le premier chargement
+      if (userReadUnsubscribe) {
+        userReadUnsubscribe()
+        userReadUnsubscribe = null
+      }
     })
   }
 

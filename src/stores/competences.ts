@@ -33,6 +33,7 @@ import { useAuthStore } from './auth'
 import { useNotificationsStore } from './notifications'
 import { useToast } from '@/composables/useToast'
 import { useGamification } from '@/composables/useGamification'
+import { createDelayedListener, getOptimizedDelay, logOptimization } from '@/composables/useOptimizedDelays'
 
 export const useCompetencesStore = defineStore('competences', () => {
   const digCompData = ref<DigCompData>({ domains: [] })
@@ -95,43 +96,70 @@ export const useCompetencesStore = defineStore('competences', () => {
         digCompData.value = docSnap.data() as DigCompData
       }
 
-      // Setup real-time listener
-      dataUnsubscribe = onSnapshot(docRef, (snapshot) => {
-        if (snapshot.exists()) {
-          digCompData.value = snapshot.data() as DigCompData
-        }
-      })
-
-      // Listen to locks
-      locksUnsubscribe = onSnapshot(collection(db, 'locks'), (snapshot) => {
-        const newLocks: Record<string, Lock> = {}
-        snapshot.docs.forEach(doc => {
-          newLocks[doc.id] = doc.data() as Lock
+      // Setup real-time listener avec délai optimisé
+      const delay = getOptimizedDelay('COMPETENCES')
+      logOptimization('Competences Data', delay)
+      
+      const fetchData = () => {
+        dataUnsubscribe = onSnapshot(docRef, (snapshot) => {
+          if (snapshot.exists()) {
+            digCompData.value = snapshot.data() as DigCompData
+          }
         })
-        locks.value = newLocks
-      })
+      }
+      
+      // Délai court pour les données principales
+      const dataCleanup = createDelayedListener(fetchData, Math.max(5000, delay / 2), true)
+      dataUnsubscribe = dataCleanup
 
-      // Listen to snapshots
-      snapshotsUnsubscribe = onSnapshot(
-        query(collection(db, 'snapshots'), orderBy('date', 'desc'), limit(20)),
-        (snapshot) => {
-          snapshots.value = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          } as Snapshot))
-        }
-      )
+      // Listen to locks avec délai court (important pour la collaboration)
+      const fetchLocks = () => {
+        locksUnsubscribe = onSnapshot(collection(db, 'locks'), (snapshot) => {
+          const newLocks: Record<string, Lock> = {}
+          snapshot.docs.forEach(doc => {
+            newLocks[doc.id] = doc.data() as Lock
+          })
+          locks.value = newLocks
+        })
+      }
+      
+      const locksDelay = Math.max(3000, delay / 4) // Délai plus court pour les verrous
+      const locksCleanup = createDelayedListener(fetchLocks, locksDelay, true)
+      locksUnsubscribe = locksCleanup
 
-      // Listen to audit logs
-      auditUnsubscribe = onSnapshot(
-        query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc'), limit(50)),
-        (snapshot) => {
-          auditLogs.value = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          } as AuditLog))
-        }
-      )
+      // Listen to snapshots avec délai plus long
+      const fetchSnapshots = () => {
+        snapshotsUnsubscribe = onSnapshot(
+          query(collection(db, 'snapshots'), orderBy('date', 'desc'), limit(20)),
+          (snapshot) => {
+            snapshots.value = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            } as Snapshot))
+          }
+        )
+      }
+      
+      const snapshotsDelay = delay * 2 // Délai plus long pour l'historique
+      const snapshotsCleanup = createDelayedListener(fetchSnapshots, snapshotsDelay, true)
+      snapshotsUnsubscribe = snapshotsCleanup
+
+      // Listen to audit logs avec délai encore plus long
+      const fetchAuditLogs = () => {
+        auditUnsubscribe = onSnapshot(
+          query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc'), limit(50)),
+          (snapshot) => {
+            auditLogs.value = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            } as AuditLog))
+          }
+        )
+      }
+      
+      const auditDelay = delay * 3 // Délai très long pour les logs d'audit
+      const auditCleanup = createDelayedListener(fetchAuditLogs, auditDelay, true)
+      auditUnsubscribe = auditCleanup
     } catch (err) {
       console.error('Error loading data:', err)
       showError('Erreur de chargement des données')
