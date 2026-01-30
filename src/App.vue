@@ -75,6 +75,9 @@
 
     <!-- Onboarding Tour -->
     <OnboardingTour v-if="authStore.currentUser" />
+
+    <!-- News Modal -->
+    <NewsModal v-if="authStore.currentUser && newsStore.unreadNews.some(news => news && news.title && news.content && news.title.trim() && news.content.trim())" />
   </div>
 </template>
 
@@ -85,6 +88,7 @@ import { useAuthStore } from './stores/auth'
 import { useCompetencesStore } from './stores/competences'
 import { useChatStore } from './stores/chat'
 import { useNotificationsStore } from './stores/notifications'
+import { useNewsStore } from './stores/news'
 import { useSidebar } from './composables/useSidebar'
 import { useAICache } from './composables/useAICache'
 import { requestNotificationPermission } from './utils/helpers'
@@ -100,6 +104,7 @@ import MagicImport from './components/ai/MagicImport.vue'
 import ExportModal from './components/common/ExportModal.vue'
 import OnboardingTour from './components/common/OnboardingTour.vue'
 import ReviewRequestPanel from './components/review/ReviewRequestPanel.vue'
+import NewsModal from './components/common/NewsModal.vue'
 import { useReviewRequests } from './composables/useReviewRequests'
 import { useGamification } from './composables/useGamification'
 
@@ -107,6 +112,7 @@ const authStore = useAuthStore()
 const competencesStore = useCompetencesStore()
 const chatStore = useChatStore()
 const notificationsStore = useNotificationsStore()
+const newsStore = useNewsStore()
 const { isOpen: sidebarIsOpen } = useSidebar()
 const { loadHistory, cleanup: cleanupAICache } = useAICache()
 

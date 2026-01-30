@@ -1,0 +1,9 @@
+[
+  {
+    "id": "demo-base-announcement",
+    "title": "Découvrez la base de démonstration !",
+    "content": "<p>Une nouvelle base de démonstration est maintenant disponible pour vous permettre de découvrir toutes les fonctionnalités de l'application.</p><p>Cette base contient des exemples de compétences, d'objectifs d'apprentissage et de données pour vous aider à comprendre comment utiliser l'outil.</p><p>Pour accéder à la base démo, changez de mode dans vos préférences utilisateur (icône en haut à droite > Préférences > Mode Firebase > {ICON}Démo).</p><p>Profitez-en pour explorer l'interface et tester les différentes fonctionnalités !</p>",
+    "date": 1704067200000,
+    "isActive": true
+  }
+]

@@ -71,6 +71,28 @@
         <i class="ph text-xl" :class="darkMode.isDark.value ? 'ph-sun' : 'ph-moon'"></i>
       </button>
 
+      <!-- Firebase Mode Toggle -->
+      <button
+        @click="toggleFirebaseMode()"
+        class="p-2 rounded-lg transition relative"
+        :class="view.firebaseMode === 'prod'
+          ? 'hover:bg-gray-100 dark:hover:bg-gray-700 text-blue-600 dark:text-blue-400'
+          : 'bg-orange-500 hover:bg-orange-600 text-white shadow-sm'"
+        :title="view.firebaseMode === 'prod' ? 'Basculer en mode démo' : 'Basculer en mode production'"
+      >
+        <i class="ph text-xl" :class="view.firebaseMode === 'prod' ? 'ph-database' : 'ph-flask'"></i>
+        <span v-if="view.firebaseMode === 'demo'" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-3 h-3 flex items-center justify-center font-bold">!</span>
+      </button>
+
+      <!-- Import JSON-LD -->
+      <button
+        @click="importJSONLD"
+        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-gray-600 dark:text-gray-300"
+        title="Importer les données JSON-LD"
+      >
+        <i class="ph ph-file-arrow-up text-xl"></i>
+      </button>
+
       <!-- Video Conference -->
       <button
         @click="$emit('toggle-video')"
@@ -320,6 +342,7 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useCompetencesStore } from '@/stores/competences'
 import { useDarkMode } from '@/composables/useDarkMode'
 import { useTheme } from '@/composables/useTheme'
 import { useGemini } from '@/composables/useGemini'
@@ -330,6 +353,7 @@ import UserAvatar from '@/components/auth/UserAvatar.vue'
 import { useOnboardingTour } from '@/composables/useOnboardingTour'
 import { useReviewRequests } from '@/composables/useReviewRequests'
 import { useGamification } from '@/composables/useGamification'
+import { useUserPreferences } from '@/composables/useUserPreferences'
 
 defineProps<{
   videoActive?: boolean
@@ -357,10 +381,12 @@ const route = useRoute()
 const authStore = useAuthStore()
 const chatStore = useChatStore()
 const notificationsStore = useNotificationsStore()
+const competencesStore = useCompetencesStore()
 const darkMode = useDarkMode()
 const theme = useTheme()
 const { validateApiKey } = useGemini()
 const { success } = useToast()
+const { toggleFirebaseMode, view } = useUserPreferences()
 
 // Debug notifications in development
 if (typeof console !== 'undefined') {
@@ -393,6 +419,12 @@ const currentModelDescription = computed(() => {
   const model = AI_MODELS.find(m => m.value === (authStore.userData?.aiModel || 'gemini-3-flash-preview'))
   return model?.description || ''
 })
+
+const importJSONLD = async () => {
+  if (confirm('Êtes-vous sûr de vouloir importer les données JSON-LD ? Cela remplacera toutes les données actuelles.')) {
+    await competencesStore.importFromJSONLD()
+  }
+}
 
 const validateAndSaveApiKey = async () => {
   if (!apiKeyInput.value) return

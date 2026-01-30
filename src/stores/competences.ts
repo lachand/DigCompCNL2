@@ -140,6 +140,59 @@ export const useCompetencesStore = defineStore('competences', () => {
     }
   }
 
+  const importFromJSONLD = async () => {
+    try {
+      loading.value = true
+
+      // Import the JSON-LD file
+      const response = await fetch('/digcomp_v3_LO_fr_complet.json')
+      if (!response.ok) {
+        throw new Error('Failed to load JSON-LD file')
+      }
+
+      const jsonData = await response.json()
+
+      // Convert JSON-LD structure to DigCompData format
+      const convertedData: DigCompData = {
+        domains: jsonData.domains.map((domain: any) => ({
+          id: domain.id,
+          name: domain.name,
+          competences: domain.competences.map((competence: any) => ({
+            id: competence.id,
+            name: competence.name,
+            outcomes: competence.outcomes.map((outcome: any) => ({
+              id: outcome.id,
+              description: outcome.text,
+              level: outcome.level === 'Fondamental' ? 'Basic' :
+                     outcome.level === 'Intermédiaire' ? 'Intermediate' :
+                     outcome.level === 'Avancé' ? 'Advanced' : 'Highly advanced',
+              tags: outcome.isAI ? ['AI'] : [],
+              mappings: {
+                L1: { status: 'none' },
+                L2: { status: 'none' },
+                L3: { status: 'none' }
+              }
+            }))
+          }))
+        })),
+        lastUpdated: Date.now()
+      }
+
+      // Save to Firebase
+      const docRef = doc(db, 'digcomp_data', 'main_v2')
+      await setDoc(docRef, convertedData)
+
+      digCompData.value = convertedData
+      success('Données JSON-LD importées avec succès')
+
+    } catch (err) {
+      console.error('Error importing JSON-LD:', err)
+      showError('Erreur lors de l\'import du JSON-LD')
+    } finally {
+      loading.value = false
+    }
+  }
+
   const saveData = async () => {
     try {
       const docRef = doc(db, 'digcomp_data', 'main_v2')
@@ -549,6 +602,7 @@ export const useCompetencesStore = defineStore('competences', () => {
     getLockedBy,
     loadData,
     saveData,
+    importFromJSONLD,
     updateStatus,
     updateCourseLink,
     addResource,

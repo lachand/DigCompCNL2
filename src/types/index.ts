@@ -104,6 +104,7 @@ export interface User {
   apiKey?: string
   aiModel?: string
   pinned?: string[]
+  readNews?: string[]
 }
 
 export interface ChatMessage {

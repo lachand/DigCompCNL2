@@ -20,6 +20,7 @@ export interface ViewPreferences {
   showGlobalProgress: boolean
   sidebarOpen: boolean
   accentColor: string
+  firebaseMode: 'prod' | 'demo'
 }
 
 // User preferences store
@@ -43,7 +44,8 @@ const defaultView: ViewPreferences = {
   showDomainStats: true,
   showGlobalProgress: true,
   sidebarOpen: true,
-  accentColor: '#6366f1' // Indigo
+  accentColor: '#6366f1', // Indigo
+  firebaseMode: 'prod'
 }
 
 // Load from localStorage
@@ -85,6 +87,13 @@ watch(view, (newValue) => {
 
   // Apply accent color as CSS variable
   document.documentElement.style.setProperty('--accent-color', newValue.accentColor)
+
+  // Apply/remove demo mode class
+  if (newValue.firebaseMode === 'demo') {
+    document.body.classList.add('demo-mode')
+  } else {
+    document.body.classList.remove('demo-mode')
+  }
 }, { deep: true })
 
 export function useUserPreferences() {
@@ -128,6 +137,31 @@ export function useUserPreferences() {
     view.value.showGlobalProgress = !view.value.showGlobalProgress
   }
 
+  const setFirebaseMode = (mode: 'prod' | 'demo') => {
+    view.value.firebaseMode = mode
+    localStorage.setItem('firebase_mode', mode)
+
+    // Change accent color based on mode
+    const newAccentColor = mode === 'prod' ? '#6366f1' : '#f97316' // Indigo for prod, orange for demo
+    view.value.accentColor = newAccentColor
+    document.documentElement.style.setProperty('--accent-color', newAccentColor)
+
+    // Add/remove demo class on body for additional styling
+    if (mode === 'demo') {
+      document.body.classList.add('demo-mode')
+    } else {
+      document.body.classList.remove('demo-mode')
+    }
+
+    // Reload page to apply new Firebase config
+    window.location.reload()
+  }
+
+  const toggleFirebaseMode = () => {
+    const newMode = view.value.firebaseMode === 'prod' ? 'demo' : 'prod'
+    setFirebaseMode(newMode)
+  }
+
   // Preset accent colors
   const accentColors = [
     { name: 'Indigo', value: '#6366f1' },
@@ -140,9 +174,17 @@ export function useUserPreferences() {
     { name: 'Orange', value: '#f97316' }
   ]
 
-  // Initialize accent color on load
-  if (typeof document !== 'undefined') {
-    document.documentElement.style.setProperty('--accent-color', view.value.accentColor)
+// Initialize accent color and demo mode on load
+if (typeof document !== 'undefined') {
+  document.documentElement.style.setProperty('--accent-color', view.value.accentColor)
+
+  // Apply demo mode class and colors if in demo mode
+  if (view.value.firebaseMode === 'demo') {
+    document.body.classList.add('demo-mode')
+    const demoAccentColor = '#f97316' // Orange
+    document.documentElement.style.setProperty('--accent-color', demoAccentColor)
+    view.value.accentColor = demoAccentColor
+  }
   }
 
   return {
@@ -156,6 +198,8 @@ export function useUserPreferences() {
     setAccentColor,
     toggleDomainStats,
     toggleGlobalProgress,
+    setFirebaseMode,
+    toggleFirebaseMode,
     accentColors
   }
 }
