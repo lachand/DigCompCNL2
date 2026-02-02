@@ -8,6 +8,8 @@ import {
   where,
   orderBy,
   onSnapshot,
+  getDocs,
+  getDoc,
   Unsubscribe,
   setDoc
 } from 'firebase/firestore'
@@ -159,16 +161,22 @@ export const useExtendedGamificationStore = defineStore('extendedGamification', 
         orderBy('startDate', 'desc')
       )
       
-      const fetchQuests = () => {
-        questsUnsubscribe = onSnapshot(questsQuery, (snapshot) => {
+      const fetchQuests = async () => {
+        try {
+          const snapshot = await getDocs(questsQuery)
           quests.value = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
           })) as Quest[]
-        })
+        } catch (err) {
+          console.error('Error fetching quests:', err)
+        }
       }
       
-      const questsCleanup = createDelayedListener(fetchQuests, delay, true)
+      // Premier chargement immédiat
+      fetchQuests()
+      
+      const questsCleanup = createDelayedListener(fetchQuests, delay, false)
       questsUnsubscribe = questsCleanup
     }
 
@@ -179,18 +187,24 @@ export const useExtendedGamificationStore = defineStore('extendedGamification', 
         where('userId', '==', authStore.currentUser!.uid)
       )
       
-      const fetchUserQuests = () => {
-        userQuestsUnsubscribe = onSnapshot(userQuestsQuery, (snapshot) => {
+      const fetchUserQuests = async () => {
+        try {
+          const snapshot = await getDocs(userQuestsQuery)
           userQuests.value = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
           })) as UserQuest[]
-        })
+        } catch (err) {
+          console.error('Error fetching user quests:', err)
+        }
       }
       
+      // Premier chargement immédiat
+      fetchUserQuests()
+      
       // Délai plus court pour les quêtes de l'utilisateur
-      const userQuestsDelay = Math.max(5000, delay / 3)
-      const userQuestsCleanup = createDelayedListener(fetchUserQuests, userQuestsDelay, true)
+      const userQuestsDelay = Math.max(30000, delay / 3) // 30s minimum
+      const userQuestsCleanup = createDelayedListener(fetchUserQuests, userQuestsDelay, false)
       userQuestsUnsubscribe = userQuestsCleanup
     }
 
@@ -202,16 +216,22 @@ export const useExtendedGamificationStore = defineStore('extendedGamification', 
         orderBy('startDate', 'desc')
       )
       
-      const fetchChallenges = () => {
-        challengesUnsubscribe = onSnapshot(challengesQuery, (snapshot) => {
+      const fetchChallenges = async () => {
+        try {
+          const snapshot = await getDocs(challengesQuery)
           challenges.value = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
           })) as Challenge[]
-        })
+        } catch (err) {
+          console.error('Error fetching challenges:', err)
+        }
       }
       
-      const challengesCleanup = createDelayedListener(fetchChallenges, delay, true)
+      // Premier chargement immédiat
+      fetchChallenges()
+      
+      const challengesCleanup = createDelayedListener(fetchChallenges, delay, false)
       challengesUnsubscribe = challengesCleanup
     }
 
@@ -223,27 +243,34 @@ export const useExtendedGamificationStore = defineStore('extendedGamification', 
         orderBy('category')
       )
       
-      const fetchShop = () => {
-        shopUnsubscribe = onSnapshot(shopQuery, (snapshot) => {
+      const fetchShop = async () => {
+        try {
+          const snapshot = await getDocs(shopQuery)
           shopItems.value = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
           })) as ShopItem[]
-        })
+        } catch (err) {
+          console.error('Error fetching shop items:', err)
+        }
       }
       
+      // Premier chargement immédiat
+      fetchShop()
+      
       // Délai plus long pour les objets de boutique
-      const shopDelay = delay * 2
-      const shopCleanup = createDelayedListener(fetchShop, shopDelay, true)
+      const shopDelay = getOptimizedDelay('SHOP_ITEMS') // 5min
+      const shopCleanup = createDelayedListener(fetchShop, shopDelay, false)
       shopUnsubscribe = shopCleanup
     }
 
-    // User inventory listener avec délai court (plus important)
+    // User inventory listener avec polling optimisé (1min)
     if (!inventoryUnsubscribe) {
       const inventoryRef = doc(db, 'userInventories', authStore.currentUser!.uid)
       
       const fetchInventory = async () => {
-        inventoryUnsubscribe = onSnapshot(inventoryRef, async (docSnap) => {
+        try {
+          const docSnap = await getDoc(inventoryRef)
           if (docSnap.exists()) {
             userInventory.value = {
               userId: docSnap.id,
@@ -259,12 +286,17 @@ export const useExtendedGamificationStore = defineStore('extendedGamification', 
             await setDoc(inventoryRef, newInventory)
             userInventory.value = newInventory as UserInventory
           }
-        })
+        } catch (err) {
+          console.error('Error fetching inventory:', err)
+        }
       }
       
+      // Premier chargement immédiat
+      fetchInventory()
+      
       // Délai plus court pour l'inventaire (plus important pour l'utilisateur)
-      const inventoryDelay = Math.max(5000, delay / 3)
-      const inventoryCleanup = createDelayedListener(fetchInventory, inventoryDelay, true)
+      const inventoryDelay = getOptimizedDelay('USER_INVENTORY') // 20s
+      const inventoryCleanup = createDelayedListener(fetchInventory, inventoryDelay, false)
       inventoryUnsubscribe = inventoryCleanup
     }
   }

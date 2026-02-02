@@ -3,19 +3,18 @@ import { ref, computed } from 'vue'
 import {
   collection,
   addDoc,
-  onSnapshot,
+  getDocs,
   query,
   where,
   orderBy,
   updateDoc,
   doc,
   deleteDoc,
-  Unsubscribe,
   limit
 } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 import { useAuthStore } from './auth'
-import { createDelayedListener, getOptimizedDelay, logOptimization } from '@/composables/useOptimizedDelays'
+import { useFirebaseOptimizer } from '@/composables/useFirebaseOptimizer'
 
 export interface Notification {
   id?: string
@@ -36,8 +35,9 @@ export interface Notification {
 export const useNotificationsStore = defineStore('notifications', () => {
   const notifications = ref<Notification[]>([])
   const loading = ref(false)
-
-  let unsubscribe: Unsubscribe | null = null
+  
+  const optimizer = useFirebaseOptimizer()
+  let stopPolling: (() => void) | null = null
 
   const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
@@ -55,52 +55,49 @@ export const useNotificationsStore = defineStore('notifications', () => {
     const authStore = useAuthStore()
     
     // Watch for when currentUser is available
-    const setupListener = () => {
+    const setupPolling = () => {
       if (!authStore.currentUser?.email) {
         // Wait for auth to be ready
-        setTimeout(setupListener, 100)
+        setTimeout(setupPolling, 100)
         return
       }
 
-      // Clean up previous listener
-      if (unsubscribe) {
-        unsubscribe()
+      // Clean up previous polling
+      if (stopPolling) {
+        stopPolling()
       }
 
       try {
-        const delay = getOptimizedDelay('USER_NOTIFICATIONS')
-        logOptimization('User Notifications', delay)
-        
-        const fetchNotifications = () => {
+        const queryFn = async () => {
           const q = query(
             collection(db, 'notifications'),
             where('targetUser', '==', authStore.currentUser.email),
             limit(100)
           )
+          const snapshot = await getDocs(q)
+          return snapshot.docs.map(doc => {
+            const data = doc.data()
+            return {
+              id: doc.id,
+              ...data,
+              createdAt: typeof data.createdAt === 'number' ? data.createdAt : (data.createdAt?.toMillis?.() || Date.now())
+            } as Notification
+          })
+        }
 
-          unsubscribe = onSnapshot(q, (snapshot) => {
-            notifications.value = snapshot.docs.map(doc => {
-              const data = doc.data()
-              return {
-                id: doc.id,
-                ...data,
-                createdAt: typeof data.createdAt === 'number' ? data.createdAt : (data.createdAt?.toMillis?.() || Date.now())
-              } as Notification
-            })
-        }, (err) => {
-          console.error('Error loading notifications:', err)
-        })
-      }
-      
-      // Utiliser le listener avec délai de 10s pour les notifications
-      const cleanup = createDelayedListener(fetchNotifications, delay, true)
-      unsubscribe = cleanup
+        const callback = (newNotifications: Notification[]) => {
+          notifications.value = newNotifications
+        }
+
+        // Utiliser le polling optimisé (30 secondes)
+        stopPolling = optimizer.startPolling('notifications', queryFn, callback)
+        
       } catch (err) {
-        console.error('Error setting up notifications listener:', err)
+        console.error('Error setting up notifications polling:', err)
       }
     }
 
-    setupListener()
+    setupPolling()
   }
 
   const createNotification = async (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {

@@ -319,8 +319,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 import { useCompetencesStore } from '@/stores/competences'
 import { useAuthStore } from '@/stores/auth'
@@ -608,14 +608,32 @@ function formatDate(dateStr: string): string {
   })
 }
 
-onMounted(() => {
-  // Load events
-  const q = query(collection(db, 'calendar_events'), orderBy('date', 'asc'))
-  onSnapshot(q, (snapshot) => {
+const fetchEvents = async () => {
+  try {
+    const q = query(collection(db, 'calendar_events'), orderBy('date', 'asc'))
+    const snapshot = await getDocs(q)
     events.value = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     } as CalendarEvent))
-  })
+  } catch (err) {
+    console.error('Error fetching calendar events:', err)
+  }
+}
+
+let pollInterval: NodeJS.Timeout | null = null
+
+onMounted(async () => {
+  // Load events
+  await fetchEvents()
+  // Polling toutes les 2 minutes pour les événements
+  pollInterval = setInterval(fetchEvents, 120000)
+})
+
+onUnmounted(() => {
+  if (pollInterval) {
+    clearInterval(pollInterval)
+    pollInterval = null
+  }
 })
 </script>

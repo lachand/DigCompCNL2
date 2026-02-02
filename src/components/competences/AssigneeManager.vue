@@ -64,19 +64,19 @@
         <div
           v-for="user in filteredUsers"
           :key="user.uid"
-          @click="toggleAssignee(user.email)"
+          @click="user.email && toggleAssignee(user.email)"
           class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition"
         >
           <UserAvatar :email="user.email" :size="32" />
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
-              {{ user.email.split('@')[0] }}
+              {{ user.email ? user.email.split('@')[0] : 'Utilisateur inconnu' }}
             </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ user.email }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ user.email || 'Email non défini' }}</p>
           </div>
           <i
             class="ph text-lg"
-            :class="isAssigned(user.email) ? 'ph-check-circle text-green-500' : 'ph-circle text-gray-300 dark:text-gray-600'"
+            :class="(user.email && isAssigned(user.email)) ? 'ph-check-circle text-green-500' : 'ph-circle text-gray-300 dark:text-gray-600'"
           ></i>
         </div>
         <p v-if="filteredUsers.length === 0" class="px-2 py-2 text-xs text-gray-400">Aucun utilisateur trouvé</p>
@@ -174,9 +174,12 @@ const newLastName = ref('')
 const isAdding = ref(false)
 
 const filteredUsers = computed(() => {
-  if (!searchQuery.value) return authStore.users
+  // Filtrer d'abord les utilisateurs avec email valide
+  const validUsers = authStore.users.filter(u => u.email && u.email.trim())
+  
+  if (!searchQuery.value) return validUsers
   const q = searchQuery.value.toLowerCase()
-  return authStore.users.filter(u => u.email.toLowerCase().includes(q))
+  return validUsers.filter(u => u.email.toLowerCase().includes(q))
 })
 
 const filteredExternalMembers = computed(() => {
@@ -201,7 +204,7 @@ const resolveDisplayName = (key: string): string => {
     const member = authStore.externalMembers.find(m => m.id === id)
     return member ? `${member.firstName} ${member.lastName}` : 'Membre inconnu'
   }
-  return key.split('@')[0]
+  return key ? key.split('@')[0] : 'Utilisateur inconnu'
 }
 
 const getExternalInitials = (key: string): string => {

@@ -447,7 +447,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore'
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 import { useCompetencesStore } from '@/stores/competences'
 import { useAuthStore } from '@/stores/auth'
@@ -789,24 +789,35 @@ const deleteAIEntry = async (id: string) => {
   success('Entrée supprimée')
 }
 
-const loadActivities = () => {
-  const q = query(
-    collection(db, 'activity_feed'),
-    orderBy('date', 'desc'),
-    limit(limitCount.value)
-  )
-
-  onSnapshot(q, (snapshot) => {
+const fetchActivities = async () => {
+  try {
+    const q = query(
+      collection(db, 'activity_feed'),
+      orderBy('date', 'desc'),
+      limit(limitCount.value)
+    )
+    const snapshot = await getDocs(q)
     activities.value = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     } as ActivityFeed))
-  })
+  } catch (err) {
+    console.error('Error fetching activities:', err)
+  }
 }
 
-const loadMore = () => {
+let pollInterval: NodeJS.Timeout | null = null
+
+const loadActivities = async () => {
+  await fetchActivities()
+  // Polling toutes les minutes pour l'historique
+  if (pollInterval) clearInterval(pollInterval)
+  pollInterval = setInterval(fetchActivities, 60000)
+}
+
+const loadMore = async () => {
   limitCount.value += 20
-  loadActivities()
+  await fetchActivities()
 }
 
 onMounted(() => {

@@ -3,54 +3,57 @@ import { ref, computed } from 'vue'
 import {
   collection,
   addDoc,
-  onSnapshot,
   query,
   orderBy,
   updateDoc,
   doc,
-  Unsubscribe,
   where,
   getDocs,
-  deleteDoc
+  deleteDoc,
+  limit
 } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 import type { ChatMessage } from '@/types'
 import { useAuthStore } from './auth'
 import { playSound, showDesktopNotification } from '@/utils/helpers'
-import { createDelayedListener, getOptimizedDelay, logOptimization } from '@/composables/useOptimizedDelays'
+import { useFirebaseOptimizer } from '@/composables/useFirebaseOptimizer'
 
 export const useChatStore = defineStore('chat', () => {
   const messages = ref<ChatMessage[]>([])
-  const isTyping = ref(false)
   const unreadCount = ref(0)
   const lastReadTime = ref(Date.now())
-  const isChatOpen = ref(false) // Track if chat panel is open
-
-  let messagesUnsubscribe: Unsubscribe | null = null
-  let typingTimeout: number | null = null
+  const isChatOpen = ref(false)
+  
+  const optimizer = useFirebaseOptimizer()
+  let stopPolling: (() => void) | null = null
 
   const sortedMessages = computed(() => {
     return [...messages.value].sort((a, b) => a.timestamp - b.timestamp)
   })
 
-  const loadMessages = () => {
-    const delay = getOptimizedDelay('CHAT_MESSAGES')
-    logOptimization('Chat Messages', delay)
-    
-    const fetchMessages = () => {
-      const q = query(collection(db, 'messages'), orderBy('timestamp', 'asc'))
+  const loadMessages = (limitCount: number = 20) => {
+    const queryFn = async () => {
+      // Charger seulement les messages récents par défaut
+      const q = query(
+        collection(db, 'messages'), 
+        orderBy('timestamp', 'desc'), 
+        limit(limitCount)
+      )
+      const snapshot = await getDocs(q)
+      return snapshot.docs.reverse().map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as ChatMessage))
+    }
 
-      messagesUnsubscribe = onSnapshot(q, (snapshot) => {
-        const authStore = useAuthStore()
-        const previousLength = messages.value.length
+    const callback = (newMessages: ChatMessage[]) => {
+      const authStore = useAuthStore()
+      const previousLength = messages.value.length
+      
+      messages.value = newMessages
 
-        messages.value = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        } as ChatMessage))
-
-        // Calculate unread
-        unreadCount.value = messages.value.filter(m => m.timestamp > lastReadTime.value).length
+      // Calculate unread
+      unreadCount.value = messages.value.filter(m => m.timestamp > lastReadTime.value).length
 
       // Notify on new message (if not from current user and chat is closed or tab not focused)
       if (messages.value.length > previousLength) {
@@ -68,7 +71,6 @@ export const useChatStore = defineStore('chat', () => {
             () => window.focus()
           )
 
-          // Envoi notification OneSignal locale si non lus
           // Notification locale via API Web Notifications
           if ('Notification' in window && Notification.permission === 'granted' && unreadCount.value > 0) {
             new Notification(`Nouveau message de ${latestMsg.sender}`,
@@ -81,15 +83,38 @@ export const useChatStore = defineStore('chat', () => {
           }
         }
       }
-    })
     }
-    
-    // Utiliser le listener avec délai de 2s pour le chat
-    const cleanup = createDelayedListener(fetchMessages, delay, true)
-    messagesUnsubscribe = cleanup
 
-    // Cleanup old messages (>30 days)
-    cleanupOldMessages()
+    // Utiliser le polling optimisé (5 secondes)
+    stopPolling = optimizer.startPolling('messages', queryFn, callback)
+  }
+
+  // Fonction pour charger plus de messages (pagination)
+  const loadMoreMessages = async (beforeTimestamp?: number) => {
+    const limitCount = 20
+    const q = beforeTimestamp
+      ? query(
+          collection(db, 'messages'),
+          where('timestamp', '<', beforeTimestamp),
+          orderBy('timestamp', 'desc'),
+          limit(limitCount)
+        )
+      : query(
+          collection(db, 'messages'),
+          orderBy('timestamp', 'desc'),
+          limit(limitCount)
+        )
+
+    const snapshot = await getDocs(q)
+    const olderMessages = snapshot.docs.reverse().map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as ChatMessage))
+
+    // Ajouter les anciens messages au début
+    messages.value = [...olderMessages, ...messages.value]
+
+    return olderMessages.length === limitCount // Indique s'il y a potentiellement plus de messages
   }
 
   const sendMessage = async (text: string, attachment?: {
@@ -114,31 +139,9 @@ export const useChatStore = defineStore('chat', () => {
     }
 
     await addDoc(collection(db, 'messages'), message)
-
-    // Stop typing indicator
-    setTyping(false)
   }
 
-  const setTyping = async (typing: boolean) => {
-    const authStore = useAuthStore()
-    if (!authStore.currentUser) return
-
-    if (typing) {
-      await authStore.updateUserField('isTyping', true)
-
-      // Auto-clear after 3 seconds
-      if (typingTimeout) clearTimeout(typingTimeout)
-      typingTimeout = window.setTimeout(() => {
-        setTyping(false)
-      }, 3000)
-    } else {
-      await authStore.updateUserField('isTyping', false)
-      if (typingTimeout) {
-        clearTimeout(typingTimeout)
-        typingTimeout = null
-      }
-    }
-  }
+  // Suppression de la fonction setTyping pour économiser des ressources
 
   const editMessage = async (messageId: string, newText: string) => {
     const authStore = useAuthStore()
@@ -228,26 +231,21 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   const cleanup = () => {
-    if (messagesUnsubscribe) {
-      messagesUnsubscribe()
-      messagesUnsubscribe = null
-    }
-    if (typingTimeout) {
-      clearTimeout(typingTimeout)
-      typingTimeout = null
+    if (stopPolling) {
+      stopPolling()
+      stopPolling = null
     }
   }
 
   return {
     messages,
     sortedMessages,
-    isTyping,
     unreadCount,
     isChatOpen,
     lastReadTimestamp: computed(() => lastReadTime.value),
     loadMessages,
+    loadMoreMessages,
     sendMessage,
-    setTyping,
     addReaction,
     editMessage,
     deleteMessage,

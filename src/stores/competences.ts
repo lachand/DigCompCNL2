@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import {
   doc,
   getDoc,
+  getDocs,
   setDoc,
   collection,
   addDoc,
@@ -34,6 +35,7 @@ import { useNotificationsStore } from './notifications'
 import { useToast } from '@/composables/useToast'
 import { useGamification } from '@/composables/useGamification'
 import { createDelayedListener, getOptimizedDelay, logOptimization } from '@/composables/useOptimizedDelays'
+import { useStaticCache } from '@/composables/useStaticCache'
 
 export const useCompetencesStore = defineStore('competences', () => {
   const digCompData = ref<DigCompData>({ domains: [] })
@@ -48,6 +50,7 @@ export const useCompetencesStore = defineStore('competences', () => {
   let auditUnsubscribe: Unsubscribe | null = null
 
   const { success, error: showError } = useToast()
+  const staticCache = useStaticCache()
 
   // Computed
   const allOutcomes = computed(() => {
@@ -89,21 +92,40 @@ export const useCompetencesStore = defineStore('competences', () => {
   const loadData = async () => {
     loading.value = true
     try {
-      const docRef = doc(db, 'digcomp_data', 'main_v2')
-      const docSnap = await getDoc(docRef)
-
-      if (docSnap.exists()) {
-        digCompData.value = docSnap.data() as DigCompData
+      // Vérifier le cache d'abord
+      const cacheKey = 'digcomp_data_main'
+      const cachedData = staticCache.get<DigCompData>(cacheKey)
+      
+      if (cachedData) {
+        digCompData.value = cachedData
+        loading.value = false
+        console.log('📦 Données DigComp chargées depuis le cache')
       }
 
-      // Setup real-time listener avec délai optimisé
+      const docRef = doc(db, 'digcomp_data', 'main_v2')
+      
+      // Si pas de cache, charger depuis Firestore
+      if (!cachedData) {
+        const docSnap = await getDoc(docRef)
+        if (docSnap.exists()) {
+          const data = docSnap.data() as DigCompData
+          digCompData.value = data
+          // Mettre en cache pour 24h (données statiques)
+          staticCache.set(cacheKey, data, 24 * 60 * 60 * 1000)
+        }
+      }
+
+      // Setup real-time listener avec délai optimisé SEULEMENT si nécessaire
       const delay = getOptimizedDelay('COMPETENCES')
       logOptimization('Competences Data', delay)
       
       const fetchData = () => {
         dataUnsubscribe = onSnapshot(docRef, (snapshot) => {
           if (snapshot.exists()) {
-            digCompData.value = snapshot.data() as DigCompData
+            const newData = snapshot.data() as DigCompData
+            digCompData.value = newData
+            // Invalider et renouveler le cache
+            staticCache.set(cacheKey, newData, 24 * 60 * 60 * 1000)
           }
         })
       }
@@ -112,19 +134,28 @@ export const useCompetencesStore = defineStore('competences', () => {
       const dataCleanup = createDelayedListener(fetchData, Math.max(5000, delay / 2), true)
       dataUnsubscribe = dataCleanup
 
-      // Listen to locks avec délai court (important pour la collaboration)
-      const fetchLocks = () => {
-        locksUnsubscribe = onSnapshot(collection(db, 'locks'), (snapshot) => {
+      // Listen to locks avec polling optimisé (15min)
+      const locksDelay = getOptimizedDelay('LOCKS') // 15min
+      logOptimization('Collaboration Locks', locksDelay)
+      
+      const fetchLocks = async () => {
+        try {
+          const snapshot = await getDocs(collection(db, 'locks'))
           const newLocks: Record<string, Lock> = {}
           snapshot.docs.forEach(doc => {
             newLocks[doc.id] = doc.data() as Lock
           })
           locks.value = newLocks
-        })
+        } catch (err) {
+          console.error('Error fetching locks:', err)
+        }
       }
       
-      const locksDelay = Math.max(3000, delay / 4) // Délai plus court pour les verrous
-      const locksCleanup = createDelayedListener(fetchLocks, locksDelay, true)
+      // Premier chargement immédiat
+      fetchLocks()
+      
+      // Ensuite polling avec délai optimisé
+      const locksCleanup = createDelayedListener(fetchLocks, locksDelay, false)
       locksUnsubscribe = locksCleanup
 
       // Listen to snapshots avec délai plus long

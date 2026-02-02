@@ -41,15 +41,15 @@ const getMode = (): 'prod' | 'demo' => {
 // Initialize Firebase app with prod config by default
 const firebaseConfig = getFirebaseConfig('prod')
 
-let firebaseApp: any = null
-let auth: any = null  
-let db: any = null
+let _firebaseApp: ReturnType<typeof initializeApp> | null = null
+let _auth: ReturnType<typeof getAuth> | null = null
+let _db: ReturnType<typeof getFirestore> | null = null
 
 if (firebaseConfig) {
   try {
-    firebaseApp = initializeApp(firebaseConfig)
-    auth = getAuth(firebaseApp)
-    db = getFirestore(firebaseApp)
+    _firebaseApp = initializeApp(firebaseConfig)
+    _auth = getAuth(_firebaseApp)
+    _db = getFirestore(_firebaseApp)
     console.log('✅ Firebase initialisé avec succès')
   } catch (error) {
     console.error('❌ Erreur d\'initialisation Firebase:', error)
@@ -59,9 +59,10 @@ if (firebaseConfig) {
 }
 
 // Export Firebase instances (peuvent être null si pas de config)
-export const app = firebaseApp
-export { firebaseApp }
-export { auth, db }
+export const firebaseApp = _firebaseApp
+export const app = _firebaseApp
+export const auth = _auth
+export const db = _db
 
 // VAPID key pour les notifications push
 export const vapidKey = 'BKQHESYM4wnZwWamBw1prtPHJPuRd1TpKfnv1UW53zrveVXLvDz8kPr56MeUvGuDW6ERfMQOhDXoVSrUvgYjmHU'

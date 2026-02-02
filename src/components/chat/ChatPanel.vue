@@ -39,9 +39,6 @@
         @delete="deleteMessage(message.id!)"
       />
 
-      <!-- Typing Indicator -->
-      <TypingIndicator v-if="typingUsers.length > 0" :users="typingUsers" />
-
       <!-- Empty State -->
       <div v-if="chatStore.sortedMessages.length === 0" class="text-center py-12">
         <i class="ph ph-chat-circle-dots text-6xl text-gray-300 dark:text-gray-600 mb-4"></i>
@@ -162,7 +159,6 @@ import { useMentions } from '@/composables/useMentions'
 import { fileToBase64 } from '@/utils/helpers'
 import UserAvatar from '@/components/auth/UserAvatar.vue'
 import MessageBubble from './MessageBubble.vue'
-import TypingIndicator from './TypingIndicator.vue'
 import MentionTextarea from './MentionTextarea.vue'
 import type { ChatMessage } from '@/types'
 
@@ -187,7 +183,6 @@ const editingMessage = ref<ChatMessage | null>(null)
 const editText = ref('')
 
 const onlineUsers = computed(() => authStore.users.filter(u => u.state === 'online'))
-const typingUsers = computed(() => authStore.users.filter(u => u.isTyping && u.uid !== authStore.currentUser?.uid))
 
 const canSend = computed(() => messageText.value.trim().length > 0 || attachmentPreview.value)
 

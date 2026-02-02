@@ -18,6 +18,8 @@ import {
   updateDoc,
   addDoc,
   deleteDoc,
+  getDoc,
+  getDocs,
   Unsubscribe
 } from 'firebase/firestore'
 import { auth, db } from '@/firebase/config'
@@ -63,8 +65,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (currentUser.value) {
         await updateDoc(doc(db, 'users', currentUser.value.uid), {
-          state: 'idle',
-          isTyping: false
+          state: 'idle'
         })
       }
 
@@ -183,39 +184,70 @@ export const useAuthStore = defineStore('auth', () => {
           { merge: true }
         )
 
-        // Listen to user data (garder temps réel pour l'utilisateur actuel)
-        onSnapshot(userRef, (snapshot) => {
-          if (snapshot.exists()) {
-            userData.value = snapshot.data() as User
+        // Listen to user data avec délai optimisé (60s)
+        const userDataDelay = getOptimizedDelay('USER_DATA') // 60s
+        logOptimization('Current User Data', userDataDelay)
+        
+        const fetchUserData = async () => {
+          try {
+            const snapshot = await getDoc(userRef)
+            if (snapshot.exists()) {
+              userData.value = snapshot.data() as User
+            }
+          } catch (err) {
+            console.error('Error fetching user data:', err)
           }
-        })
+        }
+        
+        // Premier chargement immédiat
+        fetchUserData()
+        
+        // Ensuite polling toutes les 60 secondes
+        const userDataCleanup = createDelayedListener(fetchUserData, userDataDelay, false)
 
         // Start heartbeat
         startHeartbeat()
         updateUserPresence()
 
-        // Listen to all users avec délai
+        // Listen to all users avec délai IMPORTANT - passage en polling
         const delay = getOptimizedDelay('USER_LIST')
         logOptimization('Users List', delay)
         
-        const fetchUsers = () => {
-          usersUnsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
-            users.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User))
-          })
+        // Remplacer onSnapshot par polling pour économiser les lectures
+        const fetchUsers = async () => {
+          try {
+            const snapshot = await getDocs(collection(db, 'users'))
+            users.value = snapshot.docs.map(doc => doc.data() as User)
+          } catch (err) {
+            console.error('Error fetching users:', err)
+          }
         }
         
-        const usersCleanup = createDelayedListener(fetchUsers, delay, true)
+        // Premier chargement
+        fetchUsers()
+        
+        // Ensuite polling avec délai optimisé
+        const usersCleanup = createDelayedListener(fetchUsers, delay, false)
         usersUnsubscribe = usersCleanup
 
-        // Listen to external members avec délai plus long
-        const fetchExternalMembers = () => {
-          externalMembersUnsubscribe = onSnapshot(collection(db, 'external_members'), (snapshot) => {
+        // Listen to external members avec polling optimisé (30min)
+        const externalDelay = getOptimizedDelay('EXTERNAL_MEMBERS') // 30min
+        logOptimization('External Members', externalDelay)
+        
+        const fetchExternalMembers = async () => {
+          try {
+            const snapshot = await getDocs(collection(db, 'external_members'))
             externalMembers.value = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ExternalMember))
-          })
+          } catch (err) {
+            console.error('Error fetching external members:', err)
+          }
         }
         
-        const externalDelay = delay * 2 // Délai plus long pour les membres externes
-        const externalCleanup = createDelayedListener(fetchExternalMembers, externalDelay, true)
+        // Premier chargement immédiat
+        fetchExternalMembers()
+        
+        // Ensuite polling avec délai optimisé
+        const externalCleanup = createDelayedListener(fetchExternalMembers, externalDelay, false)
         externalMembersUnsubscribe = externalCleanup
       } else {
         userData.value = null

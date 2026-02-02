@@ -26,13 +26,7 @@
             {{ user.email.split('@')[0] }}
           </p>
           <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-            <span v-if="user.isTyping" class="flex items-center gap-1">
-              <i class="ph ph-chat-dots animate-pulse"></i>
-              est en train d'écrire...
-            </span>
-            <span v-else>
-              {{ user.state === 'online' ? 'En ligne' : formatDate(user.lastSeen || 0) }}
-            </span>
+            <span>{{ user.state === 'online' ? 'En ligne' : formatDate(user.lastSeen || 0) }}</span>
           </div>
         </div>
 

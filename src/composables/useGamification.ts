@@ -2,13 +2,14 @@ import { ref, computed, watch } from 'vue'
 import {
   doc,
   setDoc,
-  onSnapshot,
+  getDoc,
   collection,
   query,
   orderBy,
   limit,
-  Unsubscribe
+  getDocs
 } from 'firebase/firestore'
+import { useFirebaseOptimizer } from './useFirebaseOptimizer'
 import { db } from '@/firebase/config'
 import { useExtendedGamificationStore } from '@/stores/extendedGamification'
 import { useAuthStore } from '@/stores/auth'
@@ -41,8 +42,9 @@ const userStats = ref<UserStats | null>(null)
 const leaderboard = ref<UserStats[]>([])
 const loading = ref(false)
 
-let statsUnsubscribe: Unsubscribe | null = null
-let leaderboardUnsubscribe: Unsubscribe | null = null
+const optimizer = useFirebaseOptimizer()
+let stopStatsPolling: (() => void) | null = null
+let stopLeaderboardPolling: (() => void) | null = null
 let initialized = false
 
 export function useGamification() {
@@ -92,17 +94,20 @@ export function useGamification() {
     return null
   })
 
-  const startListeners = (email: string) => {
-    // Cleanup previous listeners
-    if (statsUnsubscribe) statsUnsubscribe()
-    if (leaderboardUnsubscribe) leaderboardUnsubscribe()
+  const startPolling = (email: string) => {
+    // Cleanup previous polling
+    if (stopStatsPolling) stopStatsPolling()
+    if (stopLeaderboardPolling) stopLeaderboardPolling()
 
     loading.value = true
+    
+    // Stats polling
     const statsRef = doc(db, 'user_stats', email)
-
-    statsUnsubscribe = onSnapshot(statsRef, (snap) => {
+    
+    const statsQueryFn = async () => {
+      const snap = await getDoc(statsRef)
       if (snap.exists()) {
-        userStats.value = { id: snap.id, ...snap.data() } as UserStats
+        return { id: snap.id, ...snap.data() } as UserStats
       } else {
         // Create default stats
         const defaultStats: Omit<UserStats, 'id'> = {
@@ -126,24 +131,38 @@ export function useGamification() {
           }
         }
         setDoc(statsRef, defaultStats)
-        userStats.value = { id: email, ...defaultStats }
+        return { id: email, ...defaultStats } as UserStats
       }
+    }
+
+    const statsCallback = (stats: UserStats) => {
+      userStats.value = stats
       loading.value = false
-    })
+    }
 
-    // Load leaderboard
-    const leaderboardQuery = query(
-      collection(db, 'user_stats'),
-      orderBy('points', 'desc'),
-      limit(10)
-    )
+    // Start stats polling (1 minute)
+    stopStatsPolling = optimizer.startPolling('user_stats', statsQueryFn, statsCallback)
 
-    leaderboardUnsubscribe = onSnapshot(leaderboardQuery, (snapshot) => {
-      leaderboard.value = snapshot.docs.map(d => ({
+    // Leaderboard polling
+    const leaderboardQueryFn = async () => {
+      const leaderboardQuery = query(
+        collection(db, 'user_stats'),
+        orderBy('points', 'desc'),
+        limit(10)
+      )
+      const snapshot = await getDocs(leaderboardQuery)
+      return snapshot.docs.map(d => ({
         id: d.id,
         ...d.data()
       } as UserStats))
-    })
+    }
+
+    const leaderboardCallback = (newLeaderboard: UserStats[]) => {
+      leaderboard.value = newLeaderboard
+    }
+
+    // Start leaderboard polling (1 minute)
+    stopLeaderboardPolling = optimizer.startPolling('leaderboard', leaderboardQueryFn, leaderboardCallback)
   }
 
   const loadStats = () => {
@@ -154,7 +173,7 @@ export function useGamification() {
 
     // If email already available, start immediately
     if (authStore.currentUser?.email) {
-      startListeners(authStore.currentUser.email)
+      startPolling(authStore.currentUser.email)
       return
     }
 
@@ -163,7 +182,7 @@ export function useGamification() {
       () => authStore.currentUser?.email,
       (email) => {
         if (email) {
-          startListeners(email)
+          startPolling(email)
           stopWatch()
         }
       }

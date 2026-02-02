@@ -4,11 +4,11 @@ import {
   addDoc,
   updateDoc,
   doc,
-  onSnapshot,
+  getDocs,
   query,
-  where,
-  Unsubscribe
+  where
 } from 'firebase/firestore'
+import { useFirebaseOptimizer } from './useFirebaseOptimizer'
 import { db } from '@/firebase/config'
 import { useAuthStore } from '@/stores/auth'
 import { useCompetencesStore } from '@/stores/competences'
@@ -21,31 +21,10 @@ const reviewRequests = ref<ReviewRequest[]>([])
 const loading = ref(false)
 let initialized = false
 
-let unsubscribeReviewer: Unsubscribe | null = null
-let unsubscribeRequester: Unsubscribe | null = null
+const optimizer = useFirebaseOptimizer()
+let stopReviewPolling: (() => void) | null = null
 
-const reviewerDocs = ref<ReviewRequest[]>([])
-const requesterDocs = ref<ReviewRequest[]>([])
-
-function mergeResults() {
-  const map = new Map<string, ReviewRequest>()
-  for (const r of [...reviewerDocs.value, ...requesterDocs.value]) {
-    if (r.id) map.set(r.id, r)
-  }
-  // Sort client-side (avoids composite index requirement)
-  reviewRequests.value = Array.from(map.values()).sort(
-    (a, b) => b.createdAt - a.createdAt
-  )
-  loading.value = false
-}
-
-function startListeners(email: string) {
-  // Cleanup previous listeners
-  if (unsubscribeReviewer) unsubscribeReviewer()
-  if (unsubscribeRequester) unsubscribeRequester()
-
-  loading.value = true
-
+async function fetchReviewRequests(email: string): Promise<ReviewRequest[]> {
   // No orderBy — avoids composite index requirement, we sort client-side
   const qReviewer = query(
     collection(db, 'review_requests'),
@@ -57,21 +36,43 @@ function startListeners(email: string) {
     where('requestedBy', '==', email)
   )
 
-  unsubscribeReviewer = onSnapshot(qReviewer, (snapshot) => {
-    reviewerDocs.value = snapshot.docs.map(d => ({
-      id: d.id,
-      ...d.data()
-    } as ReviewRequest))
-    mergeResults()
-  })
+  const [reviewerSnapshot, requesterSnapshot] = await Promise.all([
+    getDocs(qReviewer),
+    getDocs(qRequester)
+  ])
 
-  unsubscribeRequester = onSnapshot(qRequester, (snapshot) => {
-    requesterDocs.value = snapshot.docs.map(d => ({
-      id: d.id,
-      ...d.data()
-    } as ReviewRequest))
-    mergeResults()
-  })
+  const reviewerReqs = reviewerSnapshot.docs.map(d => ({
+    id: d.id,
+    ...d.data()
+  } as ReviewRequest))
+
+  const requesterReqs = requesterSnapshot.docs.map(d => ({
+    id: d.id,
+    ...d.data()
+  } as ReviewRequest))
+
+  const map = new Map<string, ReviewRequest>()
+  for (const r of [...reviewerReqs, ...requesterReqs]) {
+    if (r.id) map.set(r.id, r)
+  }
+  
+  return Array.from(map.values()).sort((a, b) => b.createdAt - a.createdAt)
+}
+
+function startPolling(email: string) {
+  // Cleanup previous polling
+  if (stopReviewPolling) stopReviewPolling()
+
+  loading.value = true
+
+  const queryFn = () => fetchReviewRequests(email)
+  const callback = (requests: ReviewRequest[]) => {
+    reviewRequests.value = requests
+    loading.value = false
+  }
+
+  // Start review requests polling (30 seconds)
+  stopReviewPolling = optimizer.startPolling('review_requests', queryFn, callback)
 }
 
 export function useReviewRequests() {
@@ -107,7 +108,7 @@ export function useReviewRequests() {
 
     // If email already available, start immediately
     if (authStore.currentUser?.email) {
-      startListeners(authStore.currentUser.email)
+      startPolling(authStore.currentUser.email)
       return
     }
 
@@ -116,7 +117,7 @@ export function useReviewRequests() {
       () => authStore.currentUser?.email,
       (email) => {
         if (email) {
-          startListeners(email)
+          startPolling(email)
           stopWatch()
         }
       }

@@ -4,22 +4,23 @@ import { ref } from 'vue'
 // Configuration des délais (en millisecondes)
 export const OPTIMIZED_DELAYS = {
   // Chat - quasi temps réel (léger délai)
-  CHAT_MESSAGES: 2000, // 2s au lieu de temps réel
+  CHAT_MESSAGES: 5000, // 5s au lieu de temps réel
   
   // Données utilisateur importantes - délai modéré
   USER_NOTIFICATIONS: 10000, // 10s
   USER_STATS: 15000, // 15s
+  USER_DATA: 60000, // 60s pour les données utilisateur actuel
   USER_INVENTORY: 20000, // 20s
   USER_QUESTS: 25000, // 25s
   
   // Gamification et compétences
-  GAMIFICATION: 30000, // 30s pour les systèmes de gamification
-  COMPETENCES: 15000, // 15s pour les données de compétences
+  GAMIFICATION: 120000, // 2min pour les systèmes de gamification
+  COMPETENCES: 30000, // 30s pour les données de compétences
   
   // Listes et utilisateurs  
-  USER_LIST: 60000, // 1 minute pour les listes d'utilisateurs
-  USERS_LIST: 120000, // 2min pour la liste complète des utilisateurs
-  EXTERNAL_MEMBERS: 600000, // 10min pour les membres externes
+  USER_LIST: 300000, // 5min pour les listes d'utilisateurs
+  USERS_LIST: 600000, // 10min pour la liste complète des utilisateurs
+  EXTERNAL_MEMBERS: 1800000, // 30min pour les membres externes
   
   // Données partagées - délais plus longs
   LEADERBOARD: 30000, // 30s
@@ -31,9 +32,9 @@ export const OPTIMIZED_DELAYS = {
   CHALLENGES: 180000, // 3min
   
   // Données d'audit - délais très longs
-  AUDIT_LOGS: 900000, // 15min
-  SNAPSHOTS: 1200000, // 20min
-  LOCKS: 600000, // 10min
+  AUDIT_LOGS: 1800000, // 30min
+  SNAPSHOTS: 3600000, // 60min (1h)
+  LOCKS: 900000, // 15min
   
   // Cache - délai court mais pas temps réel
   AI_CACHE: 5000, // 5s

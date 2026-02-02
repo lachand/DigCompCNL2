@@ -9,6 +9,7 @@ import {
   orderBy,
   updateDoc,
   doc,
+  getDoc,
   Unsubscribe
 } from 'firebase/firestore'
 import { db } from '@/firebase/config'
@@ -66,23 +67,24 @@ export const useNewsStore = defineStore('news', () => {
     })
   }
 
-  const initializeUserReadNews = () => {
+  const initializeUserReadNews = async () => {
     if (!authStore.currentUser || userReadUnsubscribe) return
 
-    logOptimization('User Read News', 'Chargement unique au démarrage')
+    logOptimization('User Read News', 'Chargement unique optimisé')
     
-    // Charger une seule fois les news lues par l'utilisateur
-    const userReadRef = doc(db, 'users', authStore.currentUser!.uid)
-    userReadUnsubscribe = onSnapshot(userReadRef, (doc) => {
-      const data = doc.data()
-      userReadNews.value = data?.readNews || []
+    try {
+      // Chargement direct sans onSnapshot
+      const userReadRef = doc(db, 'users', authStore.currentUser!.uid)
+      const docSnap = await getDoc(userReadRef)
       
-      // Se désabonner après le premier chargement
-      if (userReadUnsubscribe) {
-        userReadUnsubscribe()
-        userReadUnsubscribe = null
+      if (docSnap.exists()) {
+        const data = docSnap.data()
+        userReadNews.value = data?.readNews || []
       }
-    })
+    } catch (err) {
+      console.error('Error loading user read news:', err)
+      userReadNews.value = []
+    }
   }
 
   const markNewsAsRead = async (newsId: string) => {

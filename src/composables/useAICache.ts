@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { collection, addDoc, query, orderBy, limit, onSnapshot, deleteDoc, doc, where } from 'firebase/firestore'
+import { collection, addDoc, query, orderBy, limit, onSnapshot, getDocs, deleteDoc, doc, where } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 import { useAuthStore } from '@/stores/auth'
 import type { AIHistoryEntry, AIGenerationType } from '@/types'
@@ -11,24 +11,37 @@ let unsubscribe: (() => void) | null = null
 export function useAICache() {
   const authStore = useAuthStore()
 
-  // Load history from Firestore
-  const loadHistory = (limitCount = 50) => {
+  // Load history from Firestore avec polling optimisé
+  const loadHistory = async (limitCount = 50) => {
     if (unsubscribe) return // Already listening
 
     isLoading.value = true
-    const q = query(
-      collection(db, 'ai_history'),
-      orderBy('timestamp', 'desc'),
-      limit(limitCount)
-    )
+    
+    const fetchHistory = async () => {
+      try {
+        const q = query(
+          collection(db, 'ai_history'),
+          orderBy('timestamp', 'desc'),
+          limit(limitCount)
+        )
+        const snapshot = await getDocs(q)
+        historyEntries.value = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as AIHistoryEntry))
+        isLoading.value = false
+      } catch (err) {
+        console.error('Error fetching AI history:', err)
+        isLoading.value = false
+      }
+    }
 
-    unsubscribe = onSnapshot(q, (snapshot) => {
-      historyEntries.value = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as AIHistoryEntry))
-      isLoading.value = false
-    })
+    // Premier chargement immédiat
+    await fetchHistory()
+
+    // Polling toutes les 5 minutes (AI cache moins critique)
+    const cleanup = setInterval(fetchHistory, 5 * 60 * 1000)
+    unsubscribe = () => clearInterval(cleanup)
   }
 
   // Save generation to history
